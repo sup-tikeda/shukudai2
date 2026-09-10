@@ -2,9 +2,17 @@ import { defineConfig } from "vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig({
-  plugins: [tailwindcss(), tanstackStart(), viteReact()],
+  // プラグインの順序が重要。cloudflare を先頭に置き、SSR環境をWorkers(workerd)で動かす。
+  // これにより開発時(vite dev)も本番と同じworkerd上で動くため、環境差による事故を防げる。
+  plugins: [
+    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    tailwindcss(),
+    tanstackStart(),
+    viteReact(),
+  ],
   server: {
     // WSL(Ubuntu)で動かすため、全インターフェースで待ち受ける。
     // 既定の localhost のままだと WSL の内側だけで待ち受けてしまい、

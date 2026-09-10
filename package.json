@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && wrangler deploy -c dist/server/wrangler.json",
     "start": "node server.mjs",
+    "cf-typegen": "wrangler types",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -42,6 +45,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.54.6",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.4.1",
     "@types/nodemailer": "^8.0.1",
@@ -54,6 +58,7 @@
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "wrangler": "^4.130.0"
   }
 }

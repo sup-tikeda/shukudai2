@@ -1,7 +1,12 @@
 import "dotenv/config";
 import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { equipmentLoans } from "./schema";
-import { db } from "~/lib/db";
+
+// Node で直接実行するスクリプトのため、`~/lib/db` は使わず自前で接続を作る
+// （`~/lib/db` は Cloudflare Workers 上での Hyperdrive 接続を前提にしている）。
+const db = drizzle(postgres(process.env.DATABASE_URL!));
 
 /**
  * 動作確認用のダミーデータを3件入れる（実在の人名は使わない）。

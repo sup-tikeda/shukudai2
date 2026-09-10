@@ -217,6 +217,79 @@ railway service list   # デプロイ状態を確認
 
 なお`railway up`で「Multiple services found」と言われる場合は`--service shukudai2`を付ける。
 
+## Cloudflare Workers + Hyperdrive + Neon 構成（このブランチ）
+
+アプリを Cloudflare Workers 上で動かし、DB（Neon）へは **Hyperdrive** 経由で接続する構成。
+Railway（従量課金）からの移行先として作成した。公開URL：https://shukudai2.t-ikeda-09f.workers.dev
+
+```
+利用者 → Cloudflare Workers（アプリ本体＋静的配信＋Basic認証）
+              ↓ Hyperdrive（接続プール・接続確立の高速化）
+           Neon（PostgreSQL）
+```
+
+### 構成のポイント
+
+- **ビルド**：[@cloudflare/vite-plugin](https://developers.cloudflare.com/workers/vite-plugin/) を
+  `vite.config.ts` の**先頭**に置き、SSR環境を workerd で動かす。開発（`pnpm dev`）も本番と同じ
+  workerd 上で動くため、環境差による事故が起きにくい。
+- **エントリポイント**：Basic認証を挟むため、既定の `@tanstack/react-start/server-entry` ではなく
+  [src/server.ts](src/server.ts) を使う（`wrangler.jsonc` の `main`）。
+- **DB接続**：[src/lib/db.ts](src/lib/db.ts)。Hyperdrive の接続文字列はリクエストの `env` からしか
+  取れないため、`src/server.ts` がリクエスト毎に DB 層へ渡す。
+- **静的ファイル**：`dist/client` を Workers の Assets として配信（Viteプラグインが自動設定）。
+
+### ハマった点（重要）
+
+1. **`wrangler deploy` は必ずビルド出力側の設定を指定する**
+   ルートの `wrangler.jsonc` をそのまま使うと、wrangler が `src/server.ts` を**独自に再バンドル**して
+   しまい、TanStack Start のコード変換（サーバー関数の抽出など）が抜け落ちて500エラーになる。
+   Viteプラグインが `dist/server/wrangler.json` を生成するので、そちらを指定すること
+   （`pnpm deploy` がこれを行う）。
+
+2. **モジュール読み込み時（グローバルスコープ）で乱数生成・通信をしてはいけない**
+   Workers の制約で、`Disallowed operation called within global scope` エラーになる。
+   better-auth の初期化（`betterAuth({...})`）と DB クライアントの生成がこれに該当したため、
+   どちらも**最初に使われた時に生成する遅延初期化**へ変更した。呼び出し側を変えずに済むよう、
+   `auth` と `db` は実体への Proxy として公開している
+   （[auth.ts](src/lib/auth.ts) / [db.ts](src/lib/db.ts)）。
+   なおローカル開発では requestごとにモジュールが評価されるためこのエラーが出ず、
+   **本番だけ500になる**という形で表面化する。
+
+3. **`betterAuth()` の戻り値型はファクトリ関数から推論する**
+   `ReturnType<typeof betterAuth>` と書くとプラグイン（admin/username）由来のAPIの型が失われ、
+   `createUser` や `role` が「存在しない」と型エラーになる。
+
+### コマンド
+
+```bash
+pnpm dev          # ローカル開発（workerd上で動く）
+pnpm build        # ビルド
+pnpm deploy       # ビルドしてCloudflareへデプロイ
+wrangler tail     # 本番の実行ログ（--format json で例外のスタックまで見える）
+```
+
+### 環境変数・シークレット
+
+秘密でない値は `wrangler.jsonc` の `vars`、秘密の値は `wrangler secret put <名前>` で登録する
+（`nodejs_compat` により、どちらも `process.env` から読める＝[src/lib/env.ts](src/lib/env.ts) がそのまま動く）。
+
+| 種別 | 変数 |
+| --- | --- |
+| vars（公開） | `BETTER_AUTH_URL` / `BASIC_AUTH_USER` / `SMTP_*` / `MAIL_FROM` / `CONTACT_NOTIFY_TO` |
+| secret（非公開） | `BETTER_AUTH_SECRET` / `BASIC_AUTH_PASSWORD` / `DATABASE_URL` |
+
+ローカル開発用のシークレットは `.dev.vars`（gitignore済み）に置く。ローカルの Hyperdrive は
+環境変数 `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` で接続先を指定する。
+
+### この構成での制約
+
+- **メール送信は動かない**：Workers では nodemailer（SMTP）が使えない。`SMTP_*` はダミー値を
+  設定してあり、問い合わせフォームを送信すると画面に「送信に失敗しました」と表示される。
+  対応する場合は Resend など HTTP API 型のサービスへ差し替える。
+- **`pnpm user:create` / `pnpm auth:schema`（better-auth CLI）は Node 上で動く**。
+  DB接続は `.env` の `DATABASE_URL`（Neonへの直接接続）を使うため、そのまま利用できる。
+
 ## 構成の選定理由と、他の選択肢との比較
 
 「なぜこの組み合わせなのか」「乗り換えるならどこか」を後から判断できるよう、検討内容を残す。

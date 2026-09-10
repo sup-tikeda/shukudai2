@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shukudai2",
+  "compatibility_date": "2026-09-10",
+  // Node.js の API（node:crypto など。better-auth が使用）を Workers 上で使えるようにする。
+  // このフラグにより、vars/secrets が process.env にも展開される（src/lib/env.ts がこれを読む）。
+  "compatibility_flags": ["nodejs_compat"],
+  // Basic認証を挟むため、既定の "@tanstack/react-start/server-entry" ではなく自前のエントリを使う
+  "main": "src/server.ts",
+  "observability": {
+    "enabled": true
+  },
+  // Neon への接続は Hyperdrive 経由。接続プールと接続確立の高速化を Cloudflare 側が担う。
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "2efd4230091143d59cdb8d4a2a41f774"
+    }
+  ],
+  // 秘密でない値のみここに置く。BETTER_AUTH_SECRET などは `wrangler secret put` で登録する。
+  "vars": {
+    "BETTER_AUTH_URL": "https://shukudai2.t-ikeda-09f.workers.dev",
+    "BASIC_AUTH_USER": "admin",
+    // メール送信は未対応（Workers では nodemailer が動かないため）。
+    // src/lib/env.ts のバリデーションを通すためのダミー値。
+    "SMTP_HOST": "localhost",
+    "SMTP_PORT": "2525",
+    "SMTP_SECURE": "false",
+    "MAIL_FROM": "社内ダッシュボード <no-reply@example.com>",
+    "CONTACT_NOTIFY_TO": "admin@example.com"
+  }
+}

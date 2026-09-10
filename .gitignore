@@ -9,3 +9,5 @@ dist
 .DS_Store
 src/routeTree.gen.ts
 .claude/
+.dev.vars
+.wrangler/
