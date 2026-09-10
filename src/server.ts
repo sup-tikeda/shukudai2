@@ -1,7 +1,7 @@
 import defaultEntry, {
   createServerEntry,
 } from "@tanstack/react-start/server-entry";
-import { setDatabaseConnectionString } from "~/lib/db";
+import { runWithDatabase } from "~/lib/db";
 
 /**
  * Cloudflare Workers 上でのアプリの入り口。
@@ -34,10 +34,13 @@ export default createServerEntry({
     }
 
     const hyperdrive = (rest[0] as WorkerEnv | undefined)?.HYPERDRIVE;
-    if (hyperdrive) {
-      setDatabaseConnectionString(hyperdrive.connectionString);
+    if (!hyperdrive) {
+      return defaultEntry.fetch(request, ...rest);
     }
 
-    return defaultEntry.fetch(request, ...rest);
+    // DB接続はリクエスト単位で作る（別リクエストで作った接続は Workers 上で使えない）
+    return runWithDatabase(hyperdrive.connectionString, () =>
+      defaultEntry.fetch(request, ...rest),
+    );
   },
 });

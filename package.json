@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && wrangler deploy -c dist/server/wrangler.json",
+    "cf:deploy": "vite build && wrangler deploy -c dist/server/wrangler.json",
     "start": "node server.mjs",
     "cf-typegen": "wrangler types",
     "test": "vitest run",
