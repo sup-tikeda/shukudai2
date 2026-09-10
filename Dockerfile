@@ -17,6 +17,9 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
+# Node向け（server.mjs が読む dist/server/server.js）を出力する。
+# 未指定だと Cloudflare Workers 向けビルドになる（README「2つの構成パターン」参照）。
+ENV BUILD_TARGET=node
 RUN pnpm build
 
 # アプリ本体。ビルド済みの { fetch } ハンドラを server.mjs で待ち受ける。

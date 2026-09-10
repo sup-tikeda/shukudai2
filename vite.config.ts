@@ -4,11 +4,24 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
+/**
+ * ビルド対象を切り替える。
+ * - cloudflare（既定）：Cloudflare Workers 向け。出力は dist/server/index.js
+ * - node：Node.js（Docker + nginx + Cloudflare Tunnel）向け。出力は dist/server/server.js を
+ *   server.mjs が読み込む
+ *
+ * どちらの構成も維持したいため、プラグインの有無で切り替えられるようにしている
+ * （README「2つの構成パターン」参照）。
+ */
+const buildTarget = process.env.BUILD_TARGET ?? "cloudflare";
+
 export default defineConfig({
   // プラグインの順序が重要。cloudflare を先頭に置き、SSR環境をWorkers(workerd)で動かす。
   // これにより開発時(vite dev)も本番と同じworkerd上で動くため、環境差による事故を防げる。
   plugins: [
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    ...(buildTarget === "cloudflare"
+      ? [cloudflare({ viteEnvironment: { name: "ssr" } })]
+      : []),
     tailwindcss(),
     tanstackStart(),
     viteReact(),

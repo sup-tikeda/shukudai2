@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "build:node": "BUILD_TARGET=node vite build",
+    "dev:node": "BUILD_TARGET=node vite dev",
     "preview": "vite preview",
     "cf:deploy": "vite build && wrangler deploy -c dist/server/wrangler.json",
     "start": "node server.mjs",

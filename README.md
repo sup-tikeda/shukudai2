@@ -7,15 +7,45 @@ PostgreSQL / Vitest 構成の社内向けアプリです。
 接続は **Hyperdrive** を経由します（PCの電源に関係なく常時稼働）。
 公開URL：https://shukudai2.t-ikeda-09f.workers.dev
 
-Docker（nginx・docker-mailserver・postgres・cloudflared）一式は、ロールバック用に
-リポジトリへ残していますが、**通常の運用では使わないため停止しています**
-（起動したままだと Cloudflare Tunnel の旧URLが生き続け、同じNeonのデータへの入り口が
-二重にできてしまうため）。唯一 **pgAdmin だけは起動したまま**にしており、Neonの中身を
-ブラウザで確認するのに使います（http://localhost:5051 ）。
+## 2つの構成パターン
+
+このリポジトリは、**2通りの動かし方**を維持しています。開発の途中で試した他の構成
+（Railway、ローカルアプリ + Neon の組み合わせなど）は経緯として文書に残すだけで、
+実際に使えるようにしているのは以下の2つです。
+
+| | **パターンA：ローカル + Cloudflare Tunnel** | **パターンB：Cloudflare + Hyperdrive + Neon**（現行） |
+| --- | --- | --- |
+| アプリの実行場所 | このPC（Docker：app + nginx） | Cloudflare Workers |
+| DB | このPCのPostgreSQL（Docker） | Neon（Hyperdrive経由） |
+| 外部公開 | Cloudflare Tunnel（`*.trycloudflare.com`） | Workers のURL |
+| PCを止めると | **止まる** | 影響なし（24時間稼働） |
+| メール送信 | **使える**（docker-mailserver。社内限定） | 使えない（Workersの制約） |
+| Basic認証 | nginx（`auth_basic`） | アプリ自身（`src/server.ts`） |
+| ビルド | `pnpm build:node` → `dist/server/server.js` | `pnpm build` → `dist/server/index.js` |
+| 起動・反映 | `docker compose up -d --build` | `pnpm cf:deploy` |
+
+ビルド対象は環境変数 `BUILD_TARGET` で切り替わります（未指定なら `cloudflare`）。
+`vite.config.ts` が Cloudflare 用プラグインの有無を切り替えるため、**同じソースのまま
+どちらの構成でもビルドできます**。
+
+**現在の運用はパターンB**（公開URL：https://shukudai2.t-ikeda-09f.workers.dev ）。
+パターンA用のコンテナは停止しています（起動したままだと Cloudflare Tunnel の旧URLが
+生き続け、同じデータへの入り口が二重にできてしまうため）。
+唯一 **pgAdmin だけは起動したまま**にしており、Neonの中身をブラウザで確認するのに使います
+（http://localhost:5051 ）。
 
 ```bash
 docker compose up -d pgadmin   # DBを見たい時だけ起動する
 docker compose stop            # 使い終わったら停止
+```
+
+**パターンAへ戻す場合**は、`.env` の `DATABASE_URL` をローカルPostgreSQL向けに戻したうえで
+以下を実行します（DBの中身はNeon側とは別物になる点に注意）。
+
+```bash
+docker compose --profile rollback up -d postgres  # ローカルDBを起動
+pnpm build:node                                    # Node向けにビルド
+docker compose up -d --build                       # app + nginx + cloudflared + mailserver
 ```
 
 ## 現在のスコープ
