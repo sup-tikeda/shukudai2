@@ -89,6 +89,28 @@ docker compose exec mailserver setup email add no-reply@shukudai2.local "任意�
 
 停止は `docker compose down`、**DBの中身ごと消す場合のみ** `docker compose down -v` です。
 
+## Cloudflare Tunnelで一時的に外部公開する
+
+`cloudflared`サービスがCloudflareの**Quick Tunnel**（アカウント登録不要）を使い、
+`https://xxxx.trycloudflare.com`のようなURLでインターネット経由の一時的なアクセスを可能にする。
+社内での動作確認・共有用と割り切ること（起動のたびにURLが変わり、稼働継続の保証もない）。
+
+```bash
+docker compose up -d cloudflared
+docker compose logs cloudflared   # 発行された https://xxxx.trycloudflare.com を確認
+```
+
+発行されたURLを `.env` の `TUNNEL_PUBLIC_URL` に設定し、`BETTER_AUTH_URL` に反映させるため
+`app`コンテナを再起動する（設定しないと外部URLとOriginがずれてログインが403になる）。
+
+```bash
+docker compose up -d app
+```
+
+固定の独自ドメインで恒常的に公開したい場合は、Quick Tunnelではなく
+[named tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+（Cloudflareアカウントへのログインとドメイン登録が必要）に切り替えること。
+
 ## 環境変数
 
 `.env` は `.gitignore` で除外しています。**認証情報をコードやリポジトリに直接書かないでください。**
@@ -109,6 +131,7 @@ Docker の secrets、CI/CD のシークレット機能など）で渡します�
 | `CONTACT_NOTIFY_TO` | 問い合わせの通知先アドレス |
 | `MAIL_DOMAIN` | docker-mailserver のドメイン名（社内限定のため実在ドメインでなくてよい） |
 | `MAIL_SMTP_PORT` | docker-mailserver のホスト側公開ポート（既定 2525。ホストから送信テストする場合に使う） |
+| `TUNNEL_PUBLIC_URL` | Cloudflare Tunnel（`cloudflared`サービス）で外部公開する際の公開URL。設定すると`BETTER_AUTH_URL`をこの値で上書きする |
 
 値は `src/lib/env.ts` の zod スキーマで検証されます。未設定・不正な形式ならその場で失敗するため、
 本番で設定漏れに気づかないまま動き続けることはありません。

@@ -38,9 +38,10 @@ services:
       # コンテナ内からはホスト名 postgres・ポート5432で接続する（.env の値を上書き）。
       # パスワードに @ : / などURLの記号を使うと壊れるため、英数字のみにすること。
       DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-app}
-      # 利用者が実際にブラウザで開くURLはnginx側の公開ポート。
+      # 利用者が実際にブラウザで開くURL。
       # ここがずれるとサーバー関数のCSRF検証（Origin比較）が403になる。
-      BETTER_AUTH_URL: http://localhost:${NGINX_PORT:-8080}
+      # Cloudflare Tunnel経由で公開する場合は、発行されたURLを.envのTUNNEL_PUBLIC_URLに設定する。
+      BETTER_AUTH_URL: ${TUNNEL_PUBLIC_URL:-http://localhost:${NGINX_PORT:-8080}}
       # コンテナ内からはホスト名 mailserver・ポート25で送信する（.env の値を上書き）
       SMTP_HOST: mailserver
       SMTP_PORT: "25"
@@ -90,6 +91,16 @@ services:
     ports:
       # ホストから送信テストする場合に使う（例: pnpm dev をホストで動かす時）
       - "${MAIL_SMTP_PORT:-2525}:25"
+
+  # インターネット経由で一時的に外部公開するためのトンネル（Cloudflare Quick Tunnel）。
+  # 独自ドメイン不要で、起動のたびにランダムな https://*.trycloudflare.com のURLが発行される。
+  # 常設の固定URLではないため、社内の一時的な動作確認・共有用と割り切ること。
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://nginx:80
+    depends_on:
+      - nginx
 
   pgadmin:
     image: dpage/pgadmin4
