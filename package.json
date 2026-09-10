@@ -1,0 +1,59 @@
+{
+  "name": "shukudai2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "node server.mjs",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:studio": "drizzle-kit studio",
+    "auth:schema": "pnpm dlx auth@latest generate --adapter drizzle --dialect postgresql --config src/lib/auth.ts --output src/db/auth-schema.ts -y",
+    "user:create": "pnpm dlx auth@latest create-admin --config src/lib/auth.ts --force"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.3.4",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.3.4",
+  "type": "module",
+  "dependencies": {
+    "@ark-ui/react": "^5.39.1",
+    "@tanstack/react-router": "^1.170.32",
+    "@tanstack/react-start": "^1.168.49",
+    "better-auth": "^1.7.3",
+    "drizzle-orm": "^0.45.2",
+    "nodemailer": "^10.0.0",
+    "postgres": "^3.4.9",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "srvx": "^1.0.3",
+    "tailwind-variants": "^3.3.1",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.4.1",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
+  }
+}

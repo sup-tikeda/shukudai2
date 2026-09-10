@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild: true
+
+# @tanstack/start-server-core は h3 を "h3-v2" という別名で依存している。
+# pnpm 12.3.4 はこの別名を再解決できず 404 になるため、明示的に解決先を指定する。
+overrides:
+  h3-v2: npm:h3@2.0.1-rc.20
