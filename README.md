@@ -1,9 +1,14 @@
 # 社内備品 貸出リスト
 
 TanStack Start + Vite / ark-ui / Tailwind CSS + Tailwind Variants / zod / better-auth / drizzle-orm /
-PostgreSQL / Vitest 構成の社内向けアプリです。PostgreSQL は Docker で起動します。
-アプリをコンテナで動かす場合は、nginx（リバースプロキシ）経由でアクセスし、
-問い合わせ通知メールは docker-mailserver（社内限定の送信専用リレー）経由で送信します。
+PostgreSQL / Vitest 構成の社内向けアプリです。
+
+**現在の構成**：アプリは **Cloudflare Workers**、DBは **Neon（PostgreSQL）** で動いており、
+接続は **Hyperdrive** を経由します（PCの電源に関係なく常時稼働）。
+公開URL：https://shukudai2.t-ikeda-09f.workers.dev
+
+Docker（nginx・docker-mailserver・pgAdmin・cloudflared）一式は、開発時の確認と
+ロールバック用にリポジトリへ残していますが、通常の運用では使いません。
 
 ## 現在のスコープ
 
@@ -170,11 +175,15 @@ PCを閉じてもデータが失われないよう、DBをローカルのDocker�
 
 ローカル用の古いサーバー登録（ホスト名`postgres`）は、使わないなら削除して構わない。
 
-## アプリをRailway（クラウド）に移行した経緯
+## アプリをRailway（クラウド）に移行した経緯 ※現在は廃止
+
+> **この節は過去の経緯**。RailwayはCloudflare Workersへの移行後に**サービスごと削除済み**
+> （従量課金を止めるため）。現在の構成は「Cloudflare Workers + Hyperdrive + Neon 構成」を参照。
+> 戻したくなった場合は、この節の手順とGitHubのコードから再構築できる。
 
 PCの電源を落としても・Dockerを止めてもアクセスできるよう、アプリ本体もRailway
-（Dockerイメージをそのままデプロイできるホスティングサービス、無料枠あり）に移行した。
-公開URL：https://shukudai2-production.up.railway.app
+（Dockerイメージをそのままデプロイできるホスティングサービス）に移行した。
+公開URL（当時）：https://shukudai2-production.up.railway.app
 
 **構成**：既存の[Dockerfile](Dockerfile)の`app`ステージ（最終ステージ）がそのままRailwayでビルド・
 実行される。nginx・docker-mailserver・pgAdmin・cloudflaredはRailwayへは移行していない
@@ -296,7 +305,8 @@ wrangler tail     # 本番の実行ログ（--format json で例外のスタッ�
 
 ### ローカルとクラウドは同じDBを共有している
 
-現在、ローカルの開発環境もRailway（本番）も、`DATABASE_URL`で**同じNeonのDBを指している**。
+現在、ローカルの開発環境もCloudflare Workers（本番）も、**同じNeonのDBを指している**
+（本番はHyperdrive経由、ローカルは`.env`の`DATABASE_URL`経由だが、接続先のDBは同一）。
 同期しているのではなく、そもそもDBが1つしかない、というのが正確な理解。変更の種類によって
 挙動が違う点に注意する。
 
@@ -330,30 +340,28 @@ Neon固有の機能は使っていない。そのため**標準的なPostgreSQL�
 | 管理先を1か所にまとめたい | RailwayのPostgres | 従量課金でコストは増える |
 | Cloudflareに全部寄せたい | Cloudflare D1 | **SQLite系で別物**。スキーマ・認証基盤の作り直しが必要 |
 
-### アプリの置き場所：RailwayとCloudflareの比較
+### アプリの置き場所：RailwayからCloudflareへ移した理由と、実際にかかった手間
 
-DBをNeonで共有したまま、アプリだけをCloudflare（Workers/Pages）へ移すことも技術的には可能。
-利用者から見た画面・データの挙動はどちらでも同じになる。違いは「作業量」と「費用」。
+**費用**が決め手。Railwayは従量課金（`railway usage`で確認できる）で使うほど増える一方、
+Cloudflare Workersはこの規模なら無料枠に収まる。長期間動かし続ける前提のため移行し、
+**Railwayはサービスごと削除した**。
 
-| | Railway（現状） | Cloudflareへ移す場合 |
-| --- | --- | --- |
-| DB | Neon（共有・同じ） | Neon（共有・同じ） |
-| 画面・機能 | 同じ | 同じ |
-| 作業量 | ゼロ（稼働中） | 認証・DB接続・メール・ビルド設定の書き直しが必要 |
-| 費用 | **従量課金**（使うほど増える。`railway usage`で確認できる） | 無料枠が大きく、この規模なら実質無料に収まる可能性が高い |
-| Basic認証 | `server.mjs`で実装済み | Pages Functionsの`_middleware`で作り直し |
+移行前は「4箇所の書き直しが必要」と見積もっていたが、実際にやってみた結果は以下の通りだった
+（見積もりが外れた点も含めて記録しておく）。
 
-Cloudflareへ移す場合に書き直しが必要になる箇所は具体的に以下の4つ。
+| 事前の見積もり | 実際 |
+| --- | --- |
+| `postgres`パッケージ（TCP接続）は動かないので`@neondatabase/serverless`へ差し替えが必要 | **不要だった**。Hyperdrive + `nodejs_compat` により `postgres` パッケージのまま動いた |
+| better-auth（`node:crypto`依存）の調整が必要 | ライブラリ自体は`nodejs_compat`で動いた。ただし**初期化タイミング**の修正が必要だった（下記） |
+| メール送信（nodemailer）が使えない | そのとおり。ダミー設定のまま保留 |
+| ビルド構成の変更が必要 | そのとおり。`@cloudflare/vite-plugin`を足すだけで済んだ |
 
-1. **DB接続**：`postgres`パッケージ（TCP接続）はWorkersで動かないため、
-   `@neondatabase/serverless`のHTTPドライバへ差し替え、drizzle-ormの接続設定も変更
-2. **認証（better-auth）**：`node:crypto`に依存する箇所があり、Workers環境向けの確認・調整が必要
-3. **メール送信**：nodemailerによるSMTP送信が使えない（ただしResend等への切替はどちらにせよ必要）
-4. **ビルド構成**：`@tanstack/react-start`のNodeターゲットからWorkers向けターゲットへ変更
+一方、**事前に見積もれていなかった問題**が2つあり、こちらの方が時間を使った。
+どちらも「Cloudflare Workers + Hyperdrive + Neon 構成」の節に詳しく書いてある。
 
-**判断の目安**：課題提出までの一時的な稼働ならRailwayのままで十分。長期間動かし続けたい・
-費用を発生させたくないならCloudflareへの移行に意味がある。
-費用が気になる場合に見直すべきはDB（Neonは無料枠内）ではなくアプリ側（Railwayは従量課金）。
+1. `wrangler deploy` にビルド出力側の設定を渡さないと、ソースが再バンドルされて500になる
+2. Workers はモジュール読み込み時の乱数生成・通信を禁止しており、better-authとDB接続の
+   初期化を遅延化する必要があった（**ローカルでは再現せず本番だけ500になる**）
 
 ## 外部公開する前のセキュリティ対応
 
@@ -538,14 +546,17 @@ Cookieをサブドメイン間で共有するための設定（`advanced.crossSu
 12. **顧客マスタの追加**：マスタ画面に「顧客マスタ」タブを追加し、顧客名・担当者名・電話番号・
     メールアドレス・住所のCRUDを実装した（`customers`テーブル、[customers.ts](src/server/customers.ts)）。
     現時点では貸出登録など他機能とは連携せず、単体のマスタとして追加している。
+13. **Cloudflare Workers + Hyperdrive へ移行し、Railwayを廃止**：従量課金を止めるため、
+    アプリをCloudflare Workersへ移した。DBは引き続きNeonで、接続はHyperdrive経由。
+    Railwayのサービスは削除済み（「Cloudflare Workers + Hyperdrive + Neon 構成」参照）。
 
 ## 次に検討すること
 
 1. 返却済みを含む貸出履歴の閲覧・検索画面
-2. Railway上でのメール通知の実装（Resend・SendGridなど外部メール配信サービスへの切り替え）
+2. メール通知の実装（Workersでは nodemailer が使えないため、Resend など HTTP API 型の
+   サービスへの切り替えが前提）
 3. 社内ダッシュボードのURLが決まったら、`trustedOrigins` とCookie共有設定を追加する
-4. ローカル運用に戻す・併用する場合のHTTPS対応（nginxでTLSを終端する。証明書の用意とnginx設定の
-   追記が必要。`Host` ヘッダはポート番号を含めて渡すこと。`$host` を使うとサーバー関数のCSRF検証が
-   403になります）
+4. Docker（nginx・docker-mailserver・pgAdmin・cloudflared）一式は、現在は使っていないが
+   ロールバック用にリポジトリへ残してある。不要と判断できた時点で整理する
 5. docker-mailserverから社外へ実際にメールを配信する必要が出た場合の、SPF/DKIM/PTRなどDNS設定
    （現状は社内限定の送信専用リレーとしてのみ動作します）
