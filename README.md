@@ -144,6 +144,30 @@ PCを閉じてもデータが失われないよう、DBをローカルのDocker�
 サーバーではプーラーのメリットがなく、事故の元になるため、`DATABASE_URL`には直接接続
 （ホスト名に`-pooler`が付かない方）を使うこと。**
 
+### pgAdminでNeonのデータを見る
+
+ローカルの`postgres`サービスは通常起動していないため、pgAdminで以前登録した「ローカル用」の
+サーバー（ホスト名`postgres`）は`failed to resolve host 'postgres'`のエラーになる。
+実際に使われているデータはNeon側にあるため、pgAdminに**Neon用のサーバーを新しく登録**する。
+
+1. pgAdmin（http://localhost:5051）の左「Servers」を右クリック →「登録」→「サーバー」
+2. 「全般」タブ：名前に`Neon`など分かりやすいものを入力
+3. 「接続」タブに以下を入力
+
+   | 項目 | 値 |
+   | --- | --- |
+   | ホスト名/アドレス | `.env`の`DATABASE_URL`のホスト部分（`@`の後ろ、`/neondb`の手前） |
+   | ポート | `5432` |
+   | メンテナンスDB | `neondb` |
+   | ユーザー名 | `neondb_owner` |
+   | パスワード | `.env`の`DATABASE_URL`の`neondb_owner:`の直後の文字列 |
+
+4. 「SSL」タブ：「SSL mode」を`Require`に変更（Neonは暗号化接続が必須）
+5. 保存すると、`Databases > neondb > Schemas > public > Tables`の下に
+   `user`・`account`・`equipment_items`・`equipment_loans`などが見える
+
+ローカル用の古いサーバー登録（ホスト名`postgres`）は、使わないなら削除して構わない。
+
 ## アプリをRailway（クラウド）に移行した経緯
 
 PCの電源を落としても・Dockerを止めてもアクセスできるよう、アプリ本体もRailway
