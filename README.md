@@ -44,11 +44,13 @@ VS Code は左下の緑のボタンから **「WSL に接続」** して開い�
 
 ```bash
 pnpm install
-cp .env.example .env          # 値を自分の環境に合わせて編集する
-docker compose up -d postgres # PostgreSQL を起動
+cp .env.example .env          # DATABASE_URL に Neon（クラウドのPostgreSQL）の接続文字列を設定するなど、値を自分の環境に合わせて編集する
 pnpm db:migrate               # テーブルを作成
 pnpm db:seed                  # 動作確認用のダミーデータ3件を投入（任意）
 ```
+
+ローカルにPostgreSQLを別途起動する必要はない（DBはNeonを使う。ロールバック用のローカルpostgresを
+使う場合は `docker compose --profile rollback up -d postgres` で起動できる）。
 
 ログイン用のアカウントを発行します（自己登録は無効のため必須）。
 パスワードは引数に書くとシェル履歴に残るため、`--password` を省略して対話入力にしてください。
@@ -66,7 +68,7 @@ pnpm dev                      # http://localhost:5273
 ## Docker でアプリまで動かす
 
 ```bash
-docker compose up -d --build  # postgres + app + nginx + mailserver
+docker compose up -d --build  # app + nginx + mailserver + pgadmin + cloudflared（DBはNeon）
 ```
 
 `http://localhost:8080`（`.env` の `NGINX_PORT` で変更可）で開きます。
@@ -116,6 +118,31 @@ docker compose up -d app
 [named tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
 （Cloudflareアカウントへのログインとドメイン登録が必要）に切り替えること。
 
+## データベースをNeon（クラウド）に移行した経緯
+
+PCを閉じてもデータが失われないよう、DBをローカルのDockerコンテナからNeon
+（サーバーレスのマネージドPostgreSQL、無料枠あり）に移行した。アプリ本体（Node.jsの永続プロセス）は
+引き続きこのPC上のDockerで動く。移行手順は以下の通り。
+
+1. Neonでプロジェクトを作成し、接続文字列を取得
+2. `pnpm db:migrate`（`DATABASE_URL`をNeonに向けて実行）でテーブルを作成
+3. `pg_dump --data-only`でローカルDBのデータを書き出し、Neonへ流し込んで移行
+4. `.env`の`DATABASE_URL`をNeonの接続文字列に、`docker-compose.yml`の`app`サービスの
+   `DATABASE_URL`上書き設定を削除し、`.env`の値がそのまま使われるようにした
+5. ローカルの`postgres`サービスは`profiles: [rollback]`を付けて通常は起動しないようにした
+   （データも消さずロールバック用に残してある。復旧する場合は
+   `docker compose --profile rollback up -d postgres` で起動し、`.env`の`DATABASE_URL`を
+   ローカル向けに戻す）
+
+**注意（ハマった点）**：Neonの接続文字列には、ホスト名に`-pooler`が付いた「プーラー経由」と、
+付いていない「直接接続」の2種類がある。データ移行時に`pg_dump`が出力する
+`SELECT pg_catalog.set_config('search_path', '', false)`をプーラー経由のコネクションに対して
+実行してしまい、プーラーが使い回す接続の`search_path`が空のまま壊れて、テーブルが
+見えなくなる不具合が発生した（`ALTER DATABASE ... SET search_path`をやり直しても、
+既に壊れたプールされた接続には反映されなかった）。**このアプリのように永続接続するNode.js
+サーバーではプーラーのメリットがなく、事故の元になるため、`DATABASE_URL`には直接接続
+（ホスト名に`-pooler`が付かない方）を使うこと。**
+
 ## 外部公開する前のセキュリティ対応
 
 Cloudflare Tunnelでインターネットから到達可能にする前に、以下を行っている。
@@ -140,9 +167,8 @@ Docker の secrets、CI/CD のシークレット機能など）で渡します�
 
 | 変数 | 用途 |
 | --- | --- |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | docker compose が作る PostgreSQL の初期設定 |
-| `POSTGRES_PORT` | ホスト側の公開ポート（既定 5433。5432 は既存のローカル PostgreSQL と衝突するため） |
-| `DATABASE_URL` | ホストから接続する際の接続先。`pnpm dev` / `db:migrate` / `db:seed` が使う |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | ロールバック用のローカルpostgres（`profiles: [rollback]`。通常は未使用）の設定 |
+| `DATABASE_URL` | 実際に接続するDB（現在はNeon）。`pnpm dev` / `db:migrate` / `db:seed` およびDockerの`app`サービスが使う。Neonは**プーラー経由ではなく直接接続のURL**を使うこと（「データベースをNeonに移行した経緯」参照） |
 | `NGINX_PORT` | nginx（リバースプロキシ）のホスト側公開ポート（既定 8080）。コンテナでアプリまで動かす場合の実際のアクセス先 |
 | `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` | 外部公開時にnginxがかけるBasic認証のID/パスワード。未設定だとnginxが起動しない |
 | `BETTER_AUTH_SECRET` | セッション署名用の秘密鍵。`openssl rand -base64 32` などで生成し、環境ごとに変える |

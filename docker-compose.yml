@@ -1,12 +1,16 @@
-# PostgreSQL・アプリ・リバースプロキシ（nginx）・メール送信（docker-mailserver）の構成。
+# アプリ・リバースプロキシ（nginx）・メール送信（docker-mailserver）の構成。
+# データベースはNeon（クラウドのPostgreSQL）に移行済みで、.envのDATABASE_URLで指定する
+# （「データベースをNeonに移行した経緯」参照）。ローカルのpostgresサービスはロールバック用に
+# 残してあるだけで、通常は起動しない。
 #
-# 開発時（画面を直しながら確認する）:
-#   docker compose up -d postgres   # DBだけ起動し、アプリはホストで pnpm dev
 # アプリまでコンテナで動かす（nginx経由でアクセスする）:
 #   docker compose up -d --build
 name: shukudai2
 
 services:
+  # ロールバック用に残しているだけで、通常は使わない（DBは.envのDATABASE_URL＝Neonを使う）。
+  # 復旧したい場合は `docker compose up -d postgres` で起動し、.envのDATABASE_URLを
+  # localhost:${POSTGRES_PORT}向けに戻す。
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -25,6 +29,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    profiles:
+      - rollback
 
   app:
     build:
@@ -35,9 +41,7 @@ services:
     env_file: .env
     environment:
       TZ: Asia/Tokyo
-      # コンテナ内からはホスト名 postgres・ポート5432で接続する（.env の値を上書き）。
-      # パスワードに @ : / などURLの記号を使うと壊れるため、英数字のみにすること。
-      DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-app}
+      # DATABASE_URL は .env の値（Neon）をそのまま使う。
       # 利用者が実際にブラウザで開くURL。
       # ここがずれるとサーバー関数のCSRF検証（Origin比較）が403になる。
       # Cloudflare Tunnel経由で公開する場合は、発行されたURLを.envのTUNNEL_PUBLIC_URLに設定する。
@@ -46,8 +50,6 @@ services:
       SMTP_HOST: mailserver
       SMTP_PORT: "25"
     depends_on:
-      postgres:
-        condition: service_healthy
       mailserver:
         condition: service_started
     # nginx経由でのみアクセスする想定のため、ホストへは直接公開しない。
@@ -119,9 +121,6 @@ services:
       - "${PGADMIN_PORT:-5051}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
-    depends_on:
-      postgres:
-        condition: service_healthy
 
 volumes:
   postgres_data:
