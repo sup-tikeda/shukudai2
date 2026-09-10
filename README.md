@@ -7,8 +7,16 @@ PostgreSQL / Vitest 構成の社内向けアプリです。
 接続は **Hyperdrive** を経由します（PCの電源に関係なく常時稼働）。
 公開URL：https://shukudai2.t-ikeda-09f.workers.dev
 
-Docker（nginx・docker-mailserver・pgAdmin・cloudflared）一式は、開発時の確認と
-ロールバック用にリポジトリへ残していますが、通常の運用では使いません。
+Docker（nginx・docker-mailserver・postgres・cloudflared）一式は、ロールバック用に
+リポジトリへ残していますが、**通常の運用では使わないため停止しています**
+（起動したままだと Cloudflare Tunnel の旧URLが生き続け、同じNeonのデータへの入り口が
+二重にできてしまうため）。唯一 **pgAdmin だけは起動したまま**にしており、Neonの中身を
+ブラウザで確認するのに使います（http://localhost:5051 ）。
+
+```bash
+docker compose up -d pgadmin   # DBを見たい時だけ起動する
+docker compose stop            # 使い終わったら停止
+```
 
 ## 現在のスコープ
 
@@ -556,7 +564,8 @@ Cookieをサブドメイン間で共有するための設定（`advanced.crossSu
 2. メール通知の実装（Workersでは nodemailer が使えないため、Resend など HTTP API 型の
    サービスへの切り替えが前提）
 3. 社内ダッシュボードのURLが決まったら、`trustedOrigins` とCookie共有設定を追加する
-4. Docker（nginx・docker-mailserver・pgAdmin・cloudflared）一式は、現在は使っていないが
-   ロールバック用にリポジトリへ残してある。不要と判断できた時点で整理する
+4. Docker（nginx・docker-mailserver・postgres・cloudflared）一式は停止済みだが、
+   ロールバック用にリポジトリへ残してある。不要と判断できた時点で、関連ファイル
+   （`docker-compose.yml` / `Dockerfile` / `nginx/` / `server.mjs`）ごと整理する
 5. docker-mailserverから社外へ実際にメールを配信する必要が出た場合の、SPF/DKIM/PTRなどDNS設定
    （現状は社内限定の送信専用リレーとしてのみ動作します）
