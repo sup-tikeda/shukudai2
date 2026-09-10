@@ -121,8 +121,9 @@ docker compose up -d app
 ## データベースをNeon（クラウド）に移行した経緯
 
 PCを閉じてもデータが失われないよう、DBをローカルのDockerコンテナからNeon
-（サーバーレスのマネージドPostgreSQL、無料枠あり）に移行した。アプリ本体（Node.jsの永続プロセス）は
-引き続きこのPC上のDockerで動く。移行手順は以下の通り。
+（サーバーレスのマネージドPostgreSQL、無料枠あり）に移行した（アプリ本体もこの後Railwayに
+移行したため、現在はDB・アプリともPCなしで動く。「アプリをRailway（クラウド）に移行した経緯」参照）。
+移行手順は以下の通り。
 
 1. Neonでプロジェクトを作成し、接続文字列を取得
 2. `pnpm db:migrate`（`DATABASE_URL`をNeonに向けて実行）でテーブルを作成
@@ -143,9 +144,55 @@ PCを閉じてもデータが失われないよう、DBをローカルのDocker�
 サーバーではプーラーのメリットがなく、事故の元になるため、`DATABASE_URL`には直接接続
 （ホスト名に`-pooler`が付かない方）を使うこと。**
 
+## アプリをRailway（クラウド）に移行した経緯
+
+PCの電源を落としても・Dockerを止めてもアクセスできるよう、アプリ本体もRailway
+（Dockerイメージをそのままデプロイできるホスティングサービス、無料枠あり）に移行した。
+公開URL：https://shukudai2-production.up.railway.app
+
+**構成**：既存の[Dockerfile](Dockerfile)の`app`ステージ（最終ステージ）がそのままRailwayでビルド・
+実行される。nginx・docker-mailserver・pgAdmin・cloudflaredはRailwayへは移行していない
+（下記「今回保留した点」参照）。DBは前節のNeonをそのまま共有して使う。
+
+**Basic認証について**：Railwayではこのアプリの前段にnginxを置いていないため、
+[server.mjs](server.mjs)にアプリ自身でのBasic認証ミドルウェアを追加した。
+`BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD`が両方設定されている場合のみ有効になる
+（未設定なら何もしない＝ローカルの`pnpm dev`等には影響しない）。nginx経由の構成
+（Docker Compose）では、nginxとアプリの両方で同じ認証情報を使って二重にチェックされるが、
+値が同じなので体感上は問題ない。
+
+**Railway側の環境変数**：`railway variables set`で以下を設定した（`.env`とは別に、
+Railwayのプロジェクト側で管理されている。ローカルの`.env`をコミットしないのと同様、
+これらの値もリポジトリには含まれない）。
+
+| 変数 | 値 |
+| --- | --- |
+| `DATABASE_URL` | Neonの直接接続URL（ローカルと共有） |
+| `BETTER_AUTH_SECRET` | Railway用に新規生成した値（ローカルとは別の値） |
+| `BETTER_AUTH_URL` | `https://shukudai2-production.up.railway.app`（`railway domain`で発行） |
+| `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` | Railway用に新規生成した値（ローカルとは別の値） |
+| `SMTP_*` / `MAIL_FROM` / `CONTACT_NOTIFY_TO` | プレースホルダーの値（下記の通り機能しない） |
+
+**今回保留した点（メール通知）**：問い合わせフォームの通知メール送信は今回のRailway移行では
+未対応のまま。docker-mailserverをクラウドで安定稼働させるのはコストに見合わないため、
+`SMTP_HOST`等はダミー値を設定してアプリの起動チェック（`src/lib/env.ts`）だけ通し、
+実際に問い合わせフォームを送信すると失敗する（画面には「送信に失敗しました」と表示されるのみで、
+アプリ全体がクラッシュすることはない）。本格的に対応する場合は、Resend・SendGridなどの
+外部メール配信サービスへの切り替えを検討する。
+
+**デプロイ・運用コマンド**（Railway CLIを使用。`railway login`でログイン済みであること）：
+
+```bash
+railway up            # 現在のディレクトリの内容をデプロイ
+railway logs           # 実行ログを表示
+railway variables list # 設定済みの環境変数を確認
+railway service list   # デプロイ状態を確認
+```
+
 ## 外部公開する前のセキュリティ対応
 
-Cloudflare Tunnelでインターネットから到達可能にする前に、以下を行っている。
+Cloudflare Tunnelでインターネットから到達可能にする前に、以下を行っている
+（**Railwayへのアプリ移行後は、Basic認証は上記の通りアプリ自身がかけている**）。
 
 1. **検索エンジンにインデックスさせない**：全ページに`<meta name="robots" content="noindex, nofollow">`
    （[__root.tsx](src/routes/__root.tsx)）を出力し、`/robots.txt`（[public/robots.txt](public/robots.txt)）で
@@ -316,12 +363,20 @@ Cookieをサブドメイン間で共有するための設定（`advanced.crossSu
 9. **外部公開前のセキュリティ対応**：ファイル・コミット履歴に鍵や個人情報が含まれていないことを点検、
    検索エンジン対策（noindexメタタグ・`robots.txt`）、nginxでのBasic認証を追加し、アプリの管理者
    パスワードもより強固な値に変更した（「外部公開する前のセキュリティ対応」参照）。
+10. **データベースをNeonに移行**：PCを閉じてもデータが失われないよう、DBをローカルのDockerから
+    クラウドのNeonに移行した（「データベースをNeonに移行した経緯」参照）。
+11. **アプリ本体をRailwayに移行**：PCなしでもアクセスできるよう、アプリ本体もRailwayにデプロイした。
+    前段にnginxが無い構成のため、Basic認証はアプリ自身（`server.mjs`）で行うよう変更した
+    （「アプリをRailway（クラウド）に移行した経緯」参照）。問い合わせメール通知は今回のRailway移行
+    では対応を保留した。
 
 ## 次に検討すること
 
 1. 返却済みを含む貸出履歴の閲覧・検索画面
-2. HTTPS 対応（nginxでTLSを終端する。証明書の用意とnginx設定の追記が必要。
-   `Host` ヘッダはポート番号を含めて渡すこと。`$host` を使うとサーバー関数のCSRF検証が403になります）
+2. Railway上でのメール通知の実装（Resend・SendGridなど外部メール配信サービスへの切り替え）
 3. 社内ダッシュボードのURLが決まったら、`trustedOrigins` とCookie共有設定を追加する
-4. docker-mailserverから社外へ実際にメールを配信する必要が出た場合の、SPF/DKIM/PTRなどDNS設定
+4. ローカル運用に戻す・併用する場合のHTTPS対応（nginxでTLSを終端する。証明書の用意とnginx設定の
+   追記が必要。`Host` ヘッダはポート番号を含めて渡すこと。`$host` を使うとサーバー関数のCSRF検証が
+   403になります）
+5. docker-mailserverから社外へ実際にメールを配信する必要が出た場合の、SPF/DKIM/PTRなどDNS設定
    （現状は社内限定の送信専用リレーとしてのみ動作します）
