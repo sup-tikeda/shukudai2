@@ -5,6 +5,8 @@ import {
   accountCreateInputSchema,
   accountPasswordInputSchema,
   accountUpdateInputSchema,
+  customerInputSchema,
+  customerUpdateInputSchema,
   equipmentItemInputSchema,
   equipmentItemUpdateInputSchema,
 } from "~/lib/validation";
@@ -15,6 +17,12 @@ import {
   updateAccount,
   updateAccountPassword,
 } from "~/server/accounts";
+import {
+  createCustomer,
+  deleteCustomer,
+  listCustomers,
+  updateCustomer,
+} from "~/server/customers";
 import {
   createEquipmentItem,
   deleteEquipmentItem,
@@ -27,12 +35,14 @@ export const Route = createFileRoute("/master")({
   loader: async () => ({
     accounts: await listAccounts(),
     items: await listEquipmentItems(),
+    customers: await listCustomers(),
   }),
   component: MasterPage,
 });
 
 type Account = Awaited<ReturnType<typeof listAccounts>>[number];
 type EquipmentItem = Awaited<ReturnType<typeof listEquipmentItems>>[number];
+type Customer = Awaited<ReturnType<typeof listCustomers>>[number];
 
 const roleOptions = [
   { value: "admin", label: "管理者" },
@@ -45,10 +55,10 @@ function formatDateTime(value: string | Date) {
   return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-type Tab = "employees" | "items";
+type Tab = "employees" | "items" | "customers";
 
 function MasterPage() {
-  const { accounts, items } = Route.useLoaderData();
+  const { accounts, items, customers } = Route.useLoaderData();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("employees");
 
@@ -87,13 +97,25 @@ function MasterPage() {
           >
             備品マスタ
           </button>
+          <button
+            type="button"
+            onClick={() => setTab("customers")}
+            className={button({
+              variant: tab === "customers" ? "primary" : "outline",
+              className: "w-full",
+            })}
+          >
+            顧客マスタ
+          </button>
         </nav>
 
         <div className="min-w-0 flex-1">
           {tab === "employees" ? (
             <EmployeeSection accounts={accounts} onChanged={reload} />
-          ) : (
+          ) : tab === "items" ? (
             <ItemSection items={items} onChanged={reload} />
+          ) : (
+            <CustomerSection customers={customers} onChanged={reload} />
           )}
         </div>
       </div>
@@ -452,6 +474,198 @@ function ItemSection({
             label="備品名"
             required
             defaultValue={modal?.mode === "edit" ? modal.item.name : ""}
+          />
+
+          {formError ? (
+            <p className="text-sm text-red-600" role="alert">
+              {formError}
+            </p>
+          ) : null}
+
+          <button type="submit" className={button()} disabled={pending}>
+            {pending ? "保存中..." : "登録"}
+          </button>
+        </form>
+      </Modal>
+    </section>
+  );
+}
+
+function CustomerSection({
+  customers,
+  onChanged,
+}: {
+  customers: Customer[];
+  onChanged: () => Promise<void>;
+}) {
+  const [modal, setModal] = useState<
+    { mode: "create" } | { mode: "edit"; customer: Customer } | null
+  >(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!modal) return;
+    const formData = Object.fromEntries(new FormData(event.currentTarget));
+
+    setFormError(null);
+    setPending(true);
+    try {
+      if (modal.mode === "create") {
+        const parsed = customerInputSchema.safeParse(formData);
+        if (!parsed.success) {
+          setFormError(
+            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+          );
+          return;
+        }
+        await createCustomer({ data: parsed.data });
+      } else {
+        const parsed = customerUpdateInputSchema.safeParse({
+          ...formData,
+          id: modal.customer.id,
+        });
+        if (!parsed.success) {
+          setFormError(
+            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+          );
+          return;
+        }
+        await updateCustomer({ data: parsed.data });
+      }
+
+      setModal(null);
+      await onChanged();
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "保存に失敗しました。時間をおいて再度お試しください。",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleDelete(customer: Customer) {
+    if (!window.confirm(`「${customer.name}」を削除しますか？`)) {
+      return;
+    }
+    setListError(null);
+    try {
+      await deleteCustomer({ data: { id: customer.id } });
+      await onChanged();
+    } catch {
+      setListError("削除に失敗しました。");
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-medium">顧客マスタ</h2>
+        <button
+          type="button"
+          className={button({ size: "sm" })}
+          onClick={() => {
+            setFormError(null);
+            setModal({ mode: "create" });
+          }}
+        >
+          新規作成
+        </button>
+      </div>
+
+      {listError ? (
+        <p className="mt-2 text-sm text-red-600" role="alert">
+          {listError}
+        </p>
+      ) : null}
+
+      <ul className="mt-4 divide-y divide-slate-200">
+        {customers.map((customer) => (
+          <li
+            key={customer.id}
+            className="flex flex-wrap items-center justify-between gap-2 py-3"
+          >
+            <div className="min-w-0">
+              <p className="font-medium break-words">{customer.name}</p>
+              <p className="text-sm text-slate-500 break-words">
+                {[customer.contactName, customer.phone, customer.email]
+                  .filter(Boolean)
+                  .join(" ／ ") || "連絡先未登録"}
+              </p>
+              {customer.address ? (
+                <p className="text-sm text-slate-500 break-words">
+                  {customer.address}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className={button({ variant: "outline", size: "sm" })}
+                onClick={() => {
+                  setFormError(null);
+                  setModal({ mode: "edit", customer });
+                }}
+              >
+                編集
+              </button>
+              <button
+                type="button"
+                className={button({ variant: "outline", size: "sm" })}
+                onClick={() => handleDelete(customer)}
+              >
+                削除
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <Modal
+        open={modal !== null}
+        onOpenChange={(open) => !open && setModal(null)}
+        title={modal?.mode === "edit" ? "顧客を編集" : "顧客を新規作成"}
+      >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <TextField
+            name="name"
+            label="顧客名（会社名・個人名）"
+            required
+            defaultValue={modal?.mode === "edit" ? modal.customer.name : ""}
+          />
+          <TextField
+            name="contactName"
+            label="担当者名"
+            defaultValue={
+              modal?.mode === "edit" ? (modal.customer.contactName ?? "") : ""
+            }
+          />
+          <TextField
+            name="phone"
+            label="電話番号"
+            defaultValue={
+              modal?.mode === "edit" ? (modal.customer.phone ?? "") : ""
+            }
+          />
+          <TextField
+            name="email"
+            label="メールアドレス"
+            type="email"
+            defaultValue={
+              modal?.mode === "edit" ? (modal.customer.email ?? "") : ""
+            }
+          />
+          <TextField
+            name="address"
+            label="住所"
+            defaultValue={
+              modal?.mode === "edit" ? (modal.customer.address ?? "") : ""
+            }
           />
 
           {formError ? (

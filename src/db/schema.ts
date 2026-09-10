@@ -55,3 +55,22 @@ export const equipmentItems = pgTable("equipment_items", {
 });
 
 export type EquipmentItem = typeof equipmentItems.$inferSelect;
+
+/** 顧客マスタ。会社名・個人名、担当者の連絡先、住所を管理する。現時点では他機能とは連携しない。 */
+export const customers = pgTable("customers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  contactName: varchar("contact_name", { length: 60 }),
+  phone: varchar("phone", { length: 30 }),
+  email: varchar("email", { length: 255 }),
+  address: varchar("address", { length: 200 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date()),
+});
+
+export type Customer = typeof customers.$inferSelect;

@@ -90,3 +90,35 @@ export const equipmentItemUpdateInputSchema = z.object({
 export const equipmentItemIdSchema = z.object({
   id: z.uuid(),
 });
+
+/** 顧客マスタの管理（作成・編集） */
+const customerOptionalTextSchema = z
+  .string()
+  .trim()
+  .max(200)
+  .optional()
+  .transform((v) => (v ? v : undefined));
+
+export const customerInputSchema = z.object({
+  name: z.string().trim().min(1, "顧客名を入力してください").max(100),
+  contactName: customerOptionalTextSchema,
+  phone: customerOptionalTextSchema,
+  email: z
+    .string()
+    .trim()
+    .max(255)
+    .optional()
+    .transform((v) => (v ? v : undefined))
+    .refine((v) => v === undefined || z.email().safeParse(v).success, {
+      message: "メールアドレスの形式が正しくありません",
+    }),
+  address: customerOptionalTextSchema,
+});
+
+export const customerUpdateInputSchema = customerInputSchema.extend({
+  id: z.uuid(),
+});
+
+export const customerIdSchema = z.object({
+  id: z.uuid(),
+});
