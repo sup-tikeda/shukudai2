@@ -12,6 +12,8 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // 社内限定の練習課題アプリのため、検索エンジンに登録されないようにする
+      { name: "robots", content: "noindex, nofollow" },
       { title: "社内ダッシュボード" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],

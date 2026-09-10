@@ -89,6 +89,11 @@ docker compose exec mailserver setup email add no-reply@shukudai2.local "任意�
 
 停止は `docker compose down`、**DBの中身ごと消す場合のみ** `docker compose down -v` です。
 
+nginxは`.env`の`BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD`が未設定だと起動に失敗します
+（インターネット公開する構成のため、入り口でBasic認証を必須にしている）。
+`.env.example`をコピーしただけの状態では既定値`change-me`のままなので、
+外部に公開する前に必ず推測されにくい値に変更してください。
+
 ## Cloudflare Tunnelで一時的に外部公開する
 
 `cloudflared`サービスがCloudflareの**Quick Tunnel**（アカウント登録不要）を使い、
@@ -111,6 +116,22 @@ docker compose up -d app
 [named tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
 （Cloudflareアカウントへのログインとドメイン登録が必要）に切り替えること。
 
+## 外部公開する前のセキュリティ対応
+
+Cloudflare Tunnelでインターネットから到達可能にする前に、以下を行っている。
+
+1. **検索エンジンにインデックスさせない**：全ページに`<meta name="robots" content="noindex, nofollow">`
+   （[__root.tsx](src/routes/__root.tsx)）を出力し、`/robots.txt`（[public/robots.txt](public/robots.txt)）で
+   `Disallow: /`を返す。
+2. **入り口でBasic認証をかける**：nginx側で`auth_basic`を有効にし（[nginx/default.conf](nginx/default.conf)）、
+   ID/パスワードは`.env`の`BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD`から、コンテナ起動時に
+   [generate-htpasswd.sh](nginx/generate-htpasswd.sh)が生成する（値をイメージやコードに焼き込まない）。
+   パスワードを変更したら `docker compose up -d --build nginx` で反映する。
+3. **アプリ自体のログインパスワードも強固なものに変更済み**（Basic認証を突破された場合の保険）。
+
+Basic認証はアプリの全パス（`/robots.txt`含む）にかかるため、検索botは`robots.txt`の中身を見る前に
+401で弾かれる。結果的にnoindexよりも強い制限になっている（意図した動作）。
+
 ## 環境変数
 
 `.env` は `.gitignore` で除外しています。**認証情報をコードやリポジトリに直接書かないでください。**
@@ -123,6 +144,7 @@ Docker の secrets、CI/CD のシークレット機能など）で渡します�
 | `POSTGRES_PORT` | ホスト側の公開ポート（既定 5433。5432 は既存のローカル PostgreSQL と衝突するため） |
 | `DATABASE_URL` | ホストから接続する際の接続先。`pnpm dev` / `db:migrate` / `db:seed` が使う |
 | `NGINX_PORT` | nginx（リバースプロキシ）のホスト側公開ポート（既定 8080）。コンテナでアプリまで動かす場合の実際のアクセス先 |
+| `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` | 外部公開時にnginxがかけるBasic認証のID/パスワード。未設定だとnginxが起動しない |
 | `BETTER_AUTH_SECRET` | セッション署名用の秘密鍵。`openssl rand -base64 32` などで生成し、環境ごとに変える |
 | `BETTER_AUTH_URL` | アプリの公開URL |
 | `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD` / `PGADMIN_PORT` | pgAdmin（DBをブラウザで見るツール）のログイン情報と公開ポート |
