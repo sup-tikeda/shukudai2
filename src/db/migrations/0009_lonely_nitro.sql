@@ -1,0 +1,1 @@
+ALTER TABLE "cases" ADD COLUMN "case_number" serial NOT NULL;

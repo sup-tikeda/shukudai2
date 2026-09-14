@@ -212,8 +212,8 @@ function CustomersPage() {
             {
               key: "name",
               header: "顧客名",
-              // 幅を指定しない列は内容に合わせて縮むので、ここで残りを吸収させる
-              width: "w-full",
+              // 名前は短いので余白を吸わせない。ただし極端に潰れないよう下限だけ決める
+              width: "min-w-[10rem]",
               render: (customer) => (
                 <>
                   <p className="font-medium break-words">{customer.name}</p>
@@ -250,7 +250,11 @@ function CustomersPage() {
               key: "email",
               header: "メール",
               render: (customer) =>
-                customer.email || <span className="text-ink-faint">-</span>,
+                customer.email ? (
+                  <span className="break-words">{customer.email}</span>
+                ) : (
+                  <span className="text-ink-faint">-</span>
+                ),
             },
             {
               key: "address",

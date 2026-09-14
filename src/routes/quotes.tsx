@@ -178,8 +178,8 @@ function QuotesPage() {
             {
               key: "title",
               header: "タイトル",
-              // 幅を指定しない列は内容に合わせて縮むので、ここで残りを吸収させる
-              width: "w-full",
+              // タイトルは短いこともあるので余白は吸わせず、下限だけ決める
+              width: "min-w-[10rem]",
               render: (q) => (
                 <p className="font-medium break-words">
                   {q.title || (

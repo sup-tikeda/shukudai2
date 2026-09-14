@@ -64,6 +64,13 @@
       "when": 1789373772852,
       "tag": "0008_slow_shooting_star",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789377851745,
+      "tag": "0009_lonely_nitro",
+      "breakpoints": true
     }
   ]
 }

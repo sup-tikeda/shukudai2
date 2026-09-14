@@ -76,6 +76,9 @@ export type Vehicle = typeof vehicles.$inferSelect;
 /** 案件（整備・修理・点検などの作業案件）。1台の車両に対して複数発生しうる。 */
 export const cases = pgTable("cases", {
   id: uuid("id").primaryKey().defaultRandom(),
+  // 画面や電話口で読み上げる案件番号。UUIDは人が扱えないため、別に連番を持つ
+  // （見積・請求の書類番号と同じ考え方）
+  caseNumber: serial("case_number").notNull(),
   vehicleId: uuid("vehicle_id")
     .notNull()
     .references(() => vehicles.id, { onDelete: "cascade" }),

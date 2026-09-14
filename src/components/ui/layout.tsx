@@ -383,7 +383,11 @@ export type Column<T> = {
   align?: "left" | "right" | "center";
   /**
    * 列幅の指定（Tailwindのクラス）。
-   * 幅を指定しない列は内容に合わせて縮むため、伸ばしたい列に `w-full` を付ける。
+   *
+   * 基本は指定せず、ブラウザの自動配分（内容の長さに応じた割り振り）に任せる。
+   * 特定の列に `w-full` を付けるとその列が余白を全部吸ってしまい、
+   * 名前が短いときに大きな空白ができて不格好になるため使わない。
+   * 潰れると困る列にだけ `min-w-[10rem]` のように下限を決める。
    */
   width?: string;
   render: (row: T) => ReactNode;
@@ -412,7 +416,9 @@ export function DataTable<T>({
         : "text-left";
 
   return (
-    <table className="w-full border-collapse text-sm">
+    // 列が多いので、表の中だけ本文より一段小さい文字にして収まりを良くする。
+    // 最小幅を決めておき、狭い画面では列を潰さず横スクロールさせる。
+    <table className="w-full min-w-[44rem] border-collapse text-[13px]">
       <thead>
         <tr>
           {columns.map((column) => (
@@ -421,8 +427,8 @@ export function DataTable<T>({
               scope="col"
               className={[
                 // カードの中身がスクロールしても、見出し行だけは上に残す
-                "sticky top-0 z-10 border-b border-line bg-surface-raised px-4 py-2.5",
-                "text-xs font-bold tracking-wide whitespace-nowrap text-ink-faint",
+                "sticky top-0 z-10 border-b border-line bg-surface-raised px-3 py-2",
+                "text-[11px] font-bold tracking-wide whitespace-nowrap text-ink-faint",
                 alignOf(column.align),
                 column.width ?? "",
               ].join(" ")}
@@ -442,7 +448,7 @@ export function DataTable<T>({
               <td
                 key={column.key}
                 className={[
-                  "px-4 py-3 align-middle",
+                  "px-3 py-2.5 align-middle",
                   alignOf(column.align),
                 ].join(" ")}
               >

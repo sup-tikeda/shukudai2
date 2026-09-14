@@ -96,6 +96,7 @@ function CasesPage() {
   const visibleCases = cases
     .filter((c) =>
       matchesQuery(query, [
+        String(c.caseNumber),
         c.title,
         c.status,
         c.assignee,
@@ -104,6 +105,9 @@ function CasesPage() {
       ]),
     )
     .sort((a, b) => {
+      if (sortKey === "number") {
+        return a.caseNumber - b.caseNumber;
+      }
       if (sortKey === "status") {
         return (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
       }
@@ -234,10 +238,11 @@ function CasesPage() {
       <ListToolbar
         query={query}
         onQueryChange={setQuery}
-        placeholder="案件名・担当者・車両・顧客で絞り込み"
+        placeholder="案件番号・案件名・担当者・車両・顧客で絞り込み"
         sortKey={sortKey}
         onSortChange={setSortKey}
         sortOptions={[
+          { value: "number", label: "案件番号順" },
           { value: "start", label: "開始予定日順" },
           { value: "end", label: "終了予定日が近い順" },
           { value: "status", label: "ステータス順" },
@@ -264,10 +269,19 @@ function CasesPage() {
           }
           columns={[
             {
+              key: "caseNumber",
+              header: "番号",
+              render: (c) => (
+                <span className="whitespace-nowrap text-ink-faint tabular-nums">
+                  {String(c.caseNumber).padStart(6, "0")}
+                </span>
+              ),
+            },
+            {
               key: "title",
               header: "案件名",
-              // 幅を指定しない列は内容に合わせて縮むので、ここで残りを吸収させる
-              width: "w-full",
+              // 案件名は短いこともあるので余白は吸わせず、下限だけ決める
+              width: "min-w-[10rem]",
               render: (c) => (
                 <p className="font-medium break-words">{c.title}</p>
               ),
@@ -300,14 +314,16 @@ function CasesPage() {
             {
               key: "planned",
               header: "作業予定",
+              // 横に長くなるので、開始と終了を2行に分けて幅を抑える
               render: (c) => (
                 <div className="whitespace-nowrap tabular-nums">
-                  <span>
-                    {c.plannedStartOn || "-"} 〜 {c.plannedEndOn || "-"}
-                  </span>
-                  {c.status !== "完了済み" && c.plannedEndOn ? (
-                    <RemainingDays endOn={c.plannedEndOn} />
-                  ) : null}
+                  <p>{c.plannedStartOn || "-"} 〜</p>
+                  <p className="mt-0.5">
+                    {c.plannedEndOn || "-"}
+                    {c.status !== "完了済み" && c.plannedEndOn ? (
+                      <RemainingDays endOn={c.plannedEndOn} />
+                    ) : null}
+                  </p>
                 </div>
               ),
             },

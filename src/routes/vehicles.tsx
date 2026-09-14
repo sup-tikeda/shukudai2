@@ -246,8 +246,8 @@ function VehiclesPage() {
             {
               key: "model",
               header: "モデル名",
-              // 幅を指定しない列は内容に合わせて縮むので、ここで残りを吸収させる
-              width: "w-full",
+              // モデル名は短いので余白を吸わせない。ただし極端に潰れないよう下限だけ決める
+              width: "min-w-[9rem]",
               render: (vehicle) => (
                 <>
                   <p className="font-medium break-words">{vehicle.modelName}</p>

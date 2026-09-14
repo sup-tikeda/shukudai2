@@ -15,6 +15,7 @@ export const listCases = createServerFn({ method: "GET" }).handler(async () => {
   const rows = await db
     .select({
       id: cases.id,
+      caseNumber: cases.caseNumber,
       title: cases.title,
       status: cases.status,
       assignee: cases.assignee,
@@ -66,6 +67,7 @@ export const getCase = createServerFn({ method: "GET" })
     const [item] = await db
       .select({
         id: cases.id,
+        caseNumber: cases.caseNumber,
         vehicleId: cases.vehicleId,
         vehicleName: vehicles.modelName,
         customerName: customers.name,

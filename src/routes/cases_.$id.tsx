@@ -45,6 +45,7 @@ function CaseDetailPage() {
         backLabel="案件一覧"
         subtitle={
           <>
+            No. {String(item.caseNumber).padStart(6, "0")} ／{" "}
             {item.customerName} ／{" "}
             <Link
               to="/vehicles/$id"
