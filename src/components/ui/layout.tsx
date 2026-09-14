@@ -154,14 +154,7 @@ export function AppShell({
             fill ? "overflow-hidden" : "overflow-y-auto",
           ].join(" ")}
         >
-          <div
-            className={[
-              "mx-auto flex min-h-0 w-full min-w-0 flex-1 flex-col px-4 py-6 sm:px-6",
-              // 一覧画面（fill）は列数が多い表を置くため、幅いっぱいまで広げる。
-              // 詳細・設定・ダッシュボードは読みやすさを優先し、上限を残す。
-              fill ? "max-w-none" : "max-w-6xl",
-            ].join(" ")}
-          >
+          <div className="mx-auto flex min-h-0 w-full max-w-none min-w-0 flex-1 flex-col px-4 py-6 sm:px-6">
             {children}
           </div>
         </main>
@@ -632,7 +625,7 @@ export function DetailItem({
   wide?: boolean;
 }) {
   return (
-    <div className={wide ? "sm:col-span-2" : undefined}>
+    <div className={wide ? "sm:col-span-2 xl:col-span-3" : undefined}>
       <dt className="text-xs font-medium tracking-wide text-ink-faint uppercase">
         {label}
       </dt>
@@ -645,7 +638,8 @@ export function DetailItem({
 
 export function DetailList({ children }: { children: ReactNode }) {
   return (
-    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-2">
+    // 画面が広いときは3列にして、幅いっぱいの本文でも項目が間延びしないようにする
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-2 xl:grid-cols-3">
       {children}
     </dl>
   );
