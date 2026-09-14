@@ -207,6 +207,9 @@ export const staffProfiles = pgTable("staff_profiles", {
   userId: text("user_id")
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
+  // 社員コード。勤怠や書類で人を特定するのに使う。
+  // 主キーは better-auth が発行する文字列IDで人が扱えないため、別に連番を持つ。
+  staffCode: serial("staff_code").notNull().unique(),
   nameKana: varchar("name_kana", { length: 60 }),
   birthday: date("birthday"),
   hiredOn: date("hired_on"),

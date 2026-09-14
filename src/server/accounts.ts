@@ -33,6 +33,7 @@ export const listAccounts = createServerFn({ method: "GET" }).handler(
         username: user.username,
         role: user.role,
         createdAt: user.createdAt,
+        staffCode: staffProfiles.staffCode,
         nameKana: staffProfiles.nameKana,
         birthday: staffProfiles.birthday,
         hiredOn: staffProfiles.hiredOn,
@@ -118,6 +119,14 @@ export const createAccount = createServerFn({ method: "POST" })
         "社員を作成しましたが、IDを取得できず詳細情報を保存できませんでした。編集画面から入力し直してください。",
       );
     }
+
+    // 詳細情報が未入力でも社員コードは振っておきたいので、空の行をここで作る
+    // （コードは serial なので、行ができた時点で自動的に採番される）
+    await db
+      .insert(staffProfiles)
+      .values({ userId: created.id })
+      .onConflictDoNothing();
+
     return { id: created.id };
   });
 

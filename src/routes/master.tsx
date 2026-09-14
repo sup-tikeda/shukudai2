@@ -302,6 +302,12 @@ function EmployeeSection({
               }
             >
               <div className="flex flex-wrap items-center gap-2">
+                {/* 社員コード。勤怠や書類で人を特定するのに使う */}
+                <span className="text-xs text-ink-faint tabular-nums">
+                  {account.staffCode
+                    ? String(account.staffCode).padStart(6, "0")
+                    : "------"}
+                </span>
                 <p className="font-medium break-words">{account.name}</p>
                 {account.nameKana ? (
                   <span className="text-xs text-ink-faint">
