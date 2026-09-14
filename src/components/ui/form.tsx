@@ -160,8 +160,9 @@ export function Modal({
       lazyMount
       unmountOnExit
     >
-      <Dialog.Backdrop className="fixed inset-0 bg-ink/25 backdrop-blur-sm" />
-      <Dialog.Positioner className="fixed inset-0 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
+      {/* 固定表示の見出しバー（z-20）より手前に出す */}
+      <Dialog.Backdrop className="fixed inset-0 z-40 bg-ink/25 backdrop-blur-sm" />
+      <Dialog.Positioner className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
         <Dialog.Content className="my-auto w-full max-w-md rounded-xl border border-line bg-surface shadow-xl shadow-ink/10">
           <div className="flex items-center justify-between gap-2 border-b border-line px-6 py-4">
             <Dialog.Title className="text-base font-bold text-ink">

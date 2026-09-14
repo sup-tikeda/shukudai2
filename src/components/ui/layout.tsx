@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* 狭い画面向け。サイドバーの代わりに上部へ横並びで出す */}
-        <header className="sticky top-0 z-10 border-b border-line bg-surface/95 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur lg:hidden">
           <div className="flex items-center gap-2 px-4 py-2.5">
             <Link to="/" className="flex items-center gap-2">
               <BrandMark />
@@ -233,6 +233,22 @@ function IconSettings() {
   );
 }
 
+/**
+ * 一覧画面の見出しと絞り込みを、画面上部に貼り付けたままにする枠。
+ *
+ * 一覧を下までスクロールしても「新規登録」ボタンと検索欄が消えないようにするためのもの。
+ * 左右のマイナスマージンは、`main` の余白を超えて背景を敷き、
+ * 下の行が透けて見えないようにするため。
+ * 上端の位置は、狭い画面だけ上部ナビ（約57px）の下にずらす。
+ */
+export function StickyBar({ children }: { children: ReactNode }) {
+  return (
+    <div className="sticky top-[57px] z-20 -mx-4 -mt-6 bg-shell px-4 pt-6 sm:-mx-6 sm:px-6 lg:top-0">
+      {children}
+    </div>
+  );
+}
+
 /** 画面の見出し。右側に主操作ボタンなどを置ける。 */
 export function PageHeader({
   title,
@@ -249,7 +265,7 @@ export function PageHeader({
 }) {
   return (
     // 見出しは画面の起点。左のオレンジの縦棒で「ここから始まる」ことを示す
-    <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
       <div className="flex min-w-0 gap-3.5">
         <span
           aria-hidden
@@ -365,7 +381,7 @@ export function ListToolbar({
   sortOptions: { value: string; label: string }[];
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="mb-3 flex flex-wrap items-center gap-2">
       <div className="relative min-w-0 flex-1">
         <input
           type="search"

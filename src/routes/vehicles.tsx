@@ -11,6 +11,7 @@ import {
   PageHeader,
   Row,
   RowList,
+  StickyBar,
 } from "~/components/ui/layout";
 import { vehicleInputSchema, vehicleUpdateInputSchema } from "~/lib/validation";
 import { listCustomerOptions } from "~/server/customers";
@@ -180,48 +181,51 @@ function VehiclesPage() {
 
   return (
     <AppShell>
-      <PageHeader
-        title="車両"
-        subtitle="お預かりしている車両（バイク）の情報を管理します。"
-        actions={
-          <button
-            type="button"
-            className={button({ size: "sm" })}
-            disabled={customerOptions.length === 0}
-            onClick={() => {
-              setFormError(null);
-              setModal({ mode: "create" });
-            }}
-          >
-            ＋ 新規登録
-          </button>
-        }
-      />
+      {/* 一覧を下へスクロールしても、見出しと絞り込みが隠れないようにする */}
+      <StickyBar>
+        <PageHeader
+          title="車両"
+          subtitle="お預かりしている車両（バイク）の情報を管理します。"
+          actions={
+            <button
+              type="button"
+              className={button({ size: "sm" })}
+              disabled={customerOptions.length === 0}
+              onClick={() => {
+                setFormError(null);
+                setModal({ mode: "create" });
+              }}
+            >
+              ＋ 新規登録
+            </button>
+          }
+        />
 
-      {customerOptions.length === 0 ? (
-        <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
-          先に「顧客」を登録してください。車両は顧客に紐づけて管理します。
-        </p>
-      ) : null}
+        {customerOptions.length === 0 ? (
+          <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
+            先に「顧客」を登録してください。車両は顧客に紐づけて管理します。
+          </p>
+        ) : null}
 
-      {listError ? (
-        <p className="mb-4 text-sm text-danger" role="alert">
-          {listError}
-        </p>
-      ) : null}
+        {listError ? (
+          <p className="mb-4 text-sm text-danger" role="alert">
+            {listError}
+          </p>
+        ) : null}
 
-      <ListToolbar
-        query={query}
-        onQueryChange={setQuery}
-        placeholder="モデル名・車両番号・メーカー・所有者で絞り込み"
-        sortKey={sortKey}
-        onSortChange={setSortKey}
-        sortOptions={[
-          { value: "model", label: "モデル名順" },
-          { value: "inspection", label: "車検期限が近い順" },
-          { value: "customer", label: "所有者順" },
-        ]}
-      />
+        <ListToolbar
+          query={query}
+          onQueryChange={setQuery}
+          placeholder="モデル名・車両番号・メーカー・所有者で絞り込み"
+          sortKey={sortKey}
+          onSortChange={setSortKey}
+          sortOptions={[
+            { value: "model", label: "モデル名順" },
+            { value: "inspection", label: "車検期限が近い順" },
+            { value: "customer", label: "所有者順" },
+          ]}
+        />
+      </StickyBar>
 
       <Card
         title="車両一覧"
