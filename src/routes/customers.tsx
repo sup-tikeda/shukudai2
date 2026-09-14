@@ -154,7 +154,8 @@ function CustomersPage() {
   }
 
   return (
-    <AppShell>
+    // 見出しと絞り込みは固定し、一覧の中だけをスクロールさせる
+    <AppShell fill>
       <PageHeader
         eyebrow="Customers"
         title="顧客"

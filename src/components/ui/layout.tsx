@@ -27,7 +27,17 @@ const navLink = tv({
   },
 });
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  fill,
+}: {
+  children: ReactNode;
+  /**
+   * 一覧画面のように「見出しは動かさず、一覧の中だけをスクロールさせたい」画面で使う。
+   * 本文そのものはスクロールしなくなるので、`Card` の `fill` と必ずセットで使うこと。
+   */
+  fill?: boolean;
+}) {
   const router = useRouter();
   // ルート直下の loader が返すログイン情報。admin のときだけ「設定」を出す
   const sessionUser = useLoaderData({ from: "__root__" });
@@ -130,17 +140,21 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {/*
-          スクロールするのはここだけ。各画面は縦方向のflexの中に置かれるので、
-          一覧のように「見出しは固定して中身だけスクロールしたい」画面は
-          Card に fill を付ければよい（1画面に収まるようにするため）。
-        */}
-        {/*
           高さはflexだけで決める（min-height:100% のようなパーセント指定は使わない）。
           パーセントの高さは「親の高さが確定していること」が条件で、条件が崩れると
           子が高さいっぱいに広がらず、ページ全体がスクロールしてしまうため。
+
+          fill のときは本文そのものをスクロールさせない（overflow-hidden）。
+          こうすると見出しや絞り込みは**構造的に**スクロール領域の外側に置かれるので、
+          高さの計算がどうであれ動きようがない。スクロールするのは一覧の中だけになる。
         */}
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-6 sm:px-6">
+        <main
+          className={[
+            "flex min-h-0 flex-1 flex-col",
+            fill ? "overflow-hidden" : "overflow-y-auto",
+          ].join(" ")}
+        >
+          <div className="mx-auto flex min-h-0 w-full max-w-5xl min-w-0 flex-1 flex-col px-4 py-6 sm:px-6">
             {children}
           </div>
         </main>
@@ -327,7 +341,7 @@ export function Card({
         // fill: 残りの高さいっぱいに広がり、中身だけがスクロールする。
         // 一覧が長くなっても画面の外へはみ出さず、見出しと件数が常に見えるようにするため。
         // min-h-0 が無いと flex の子は縮まず、カードが画面外へあふれる。
-        fill ? "flex min-h-[14rem] min-w-0 flex-1 flex-col" : "",
+        fill ? "flex min-h-0 min-w-0 flex-1 flex-col" : "",
       ].join(" ")}
     >
       {title ? (

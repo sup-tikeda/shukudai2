@@ -102,7 +102,8 @@ function QuotesPage() {
   }));
 
   return (
-    <AppShell>
+    // 見出しと絞り込みは固定し、一覧の中だけをスクロールさせる
+    <AppShell fill>
       <PageHeader
         eyebrow="Quotes"
         title="見積・請求"

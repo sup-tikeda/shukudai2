@@ -179,7 +179,8 @@ function VehiclesPage() {
   }));
 
   return (
-    <AppShell>
+    // 見出しと絞り込みは固定し、一覧の中だけをスクロールさせる
+    <AppShell fill>
       <PageHeader
         eyebrow="Vehicles"
         title="車両"
