@@ -33,3 +33,31 @@
 html {
   color-scheme: dark;
 }
+
+/**
+ * 帳票（見積書・請求書）の印刷用設定。
+ * PDF出力は専用ライブラリを使わず、ブラウザの印刷機能（PDFとして保存）に任せている。
+ * 日本語のPDFを自前で作るにはフォント埋め込みが必要で、CJKフォントは数MB〜あり
+ * Cloudflare Workers のスクリプトサイズ上限に収まらないため。
+ */
+@page {
+  size: A4;
+  /* 余白は帳票側（padding）で作るため、ページ側は最小限にする */
+  margin: 8mm;
+}
+
+@media print {
+  /* 印刷時は画面用のダーク背景を無効化し、白地・黒文字で出す */
+  html,
+  body {
+    background: #fff;
+    color: #000;
+    color-scheme: light;
+  }
+
+  /* 背景色（表のヘッダなど）を印刷にも反映させる */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { asc, eq } from "drizzle-orm";
-import { cases, customers, quoteItems, quotes, vehicles } from "~/db/schema";
+import {
+  cases,
+  customers,
+  quoteItems,
+  quotes,
+  shopSettings,
+  vehicles,
+} from "~/db/schema";
 import { db } from "~/lib/db";
 import { requireSession } from "~/server/authGuard";
 import {
@@ -33,6 +40,7 @@ export const listQuotes = createServerFn({ method: "GET" }).handler(async () => 
   const rows = await db
     .select({
       id: quotes.id,
+      docNumber: quotes.docNumber,
       caseId: quotes.caseId,
       title: quotes.title,
       docType: quotes.docType,
@@ -77,6 +85,7 @@ export const getQuote = createServerFn({ method: "GET" })
     const [quote] = await db
       .select({
         id: quotes.id,
+        docNumber: quotes.docNumber,
         caseId: quotes.caseId,
         caseTitle: cases.title,
         customerName: customers.name,
@@ -104,6 +113,61 @@ export const getQuote = createServerFn({ method: "GET" })
       .orderBy(asc(quoteItems.createdAt));
 
     return { ...quote, items, summary: summarizeItems(items, quote.taxRate) };
+  });
+
+/**
+ * 帳票（見積書・請求書）の印刷に必要な情報を一度に返す。
+ * 宛名に使う顧客の住所や、発行元として印字する会社設定までまとめて取得する。
+ * 会社設定はまだ登録されていないこともあるため、無い場合は null を返す。
+ */
+export const getQuoteForPrint = createServerFn({ method: "GET" })
+  .validator(quoteIdSchema)
+  .handler(async ({ data }) => {
+    await requireSession();
+
+    const [quote] = await db
+      .select({
+        id: quotes.id,
+        docNumber: quotes.docNumber,
+        docType: quotes.docType,
+        title: quotes.title,
+        taxRate: quotes.taxRate,
+        note: quotes.note,
+        createdOn: quotes.createdOn,
+        sentOn: quotes.sentOn,
+        caseTitle: cases.title,
+        vehicleModelName: vehicles.modelName,
+        vehicleNumber: vehicles.vehicleNumber,
+        customerName: customers.name,
+        customerPostalCode: customers.postalCode,
+        customerAddress: customers.address,
+        customerAddressLine2: customers.addressLine2,
+        customerBuilding: customers.building,
+      })
+      .from(quotes)
+      .innerJoin(cases, eq(quotes.caseId, cases.id))
+      .innerJoin(vehicles, eq(cases.vehicleId, vehicles.id))
+      .innerJoin(customers, eq(vehicles.customerId, customers.id))
+      .where(eq(quotes.id, data.id));
+    if (!quote) {
+      throw new Error("見積・請求が見つかりません。");
+    }
+
+    const items = await db
+      .select()
+      .from(quoteItems)
+      .where(eq(quoteItems.quoteId, data.id))
+      .orderBy(asc(quoteItems.createdAt));
+
+    // 会社設定（発行元）は admin しか編集できないが、帳票の印字には全員が必要になる
+    const [settings] = await db.select().from(shopSettings).limit(1);
+
+    return {
+      quote,
+      items,
+      summary: summarizeItems(items, quote.taxRate),
+      shop: settings ?? null,
+    };
   });
 
 /** 見積・請求を新規作成する（明細項目は別途追加する） */

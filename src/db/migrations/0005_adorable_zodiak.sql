@@ -1,0 +1,1 @@
+ALTER TABLE "quotes" ADD COLUMN "doc_number" serial NOT NULL;

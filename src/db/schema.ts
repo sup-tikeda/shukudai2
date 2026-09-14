@@ -3,6 +3,7 @@ import {
   integer,
   numeric,
   pgTable,
+  serial,
   text,
   timestamp,
   uuid,
@@ -98,6 +99,8 @@ export type Case = typeof cases.$inferSelect;
 /** 見積書・請求書。1つの案件に対して複数発生しうる（見積→請求と分けて発行するため）。 */
 export const quotes = pgTable("quotes", {
   id: uuid("id").primaryKey().defaultRandom(),
+  // 帳票に印字する書類番号。UUIDは人が読み上げられないため、別に連番を持つ
+  docNumber: serial("doc_number").notNull(),
   caseId: uuid("case_id")
     .notNull()
     .references(() => cases.id, { onDelete: "cascade" }),

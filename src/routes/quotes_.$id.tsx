@@ -133,6 +133,7 @@ function QuoteDetailPage() {
         backLabel="見積・請求一覧"
         subtitle={
           <>
+            No. {String(quote.docNumber).padStart(6, "0")} ／{" "}
             {quote.customerName} ／{" "}
             <Link
               to="/cases/$id"
@@ -145,13 +146,22 @@ function QuoteDetailPage() {
           </>
         }
         actions={
-          <button
-            type="button"
-            onClick={handleDeleteQuote}
-            className={button({ variant: "danger", size: "sm" })}
-          >
-            削除
-          </button>
+          <>
+            <Link
+              to="/quotes/$id/print"
+              params={{ id: quote.id }}
+              className={button({ size: "sm" })}
+            >
+              印刷 / PDF
+            </Link>
+            <button
+              type="button"
+              onClick={handleDeleteQuote}
+              className={button({ variant: "danger", size: "sm" })}
+            >
+              削除
+            </button>
+          </>
         }
       />
 

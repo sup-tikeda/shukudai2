@@ -103,17 +103,29 @@ function QuotesPage() {
               <Row
                 key={q.id}
                 actions={
-                  <Link
-                    to="/quotes/$id"
-                    params={{ id: q.id }}
-                    className={button({ variant: "outline", size: "sm" })}
-                  >
-                    詳細
-                  </Link>
+                  <>
+                    <Link
+                      to="/quotes/$id"
+                      params={{ id: q.id }}
+                      className={button({ variant: "outline", size: "sm" })}
+                    >
+                      詳細
+                    </Link>
+                    <Link
+                      to="/quotes/$id/print"
+                      params={{ id: q.id }}
+                      className={button({ variant: "ghost", size: "sm" })}
+                    >
+                      印刷
+                    </Link>
+                  </>
                 }
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
+                  <span className="text-xs text-ink-faint tabular-nums">
+                    No.{String(q.docNumber).padStart(6, "0")}
+                  </span>
                   <p className="font-medium break-words">
                     {q.title || "（タイトル未設定）"}
                   </p>
