@@ -96,12 +96,21 @@ function DashboardPage() {
         ) : (
           <span />
         )}
-        <Link
-          to="/contact"
-          className="text-ink-faint underline underline-offset-4 transition-colors hover:text-accent"
-        >
-          問い合わせフォーム
-        </Link>
+        <span className="flex flex-wrap gap-4">
+          {/* 店舗の紹介ページ（お客様向け）。管理画面からも確認できるようにしておく */}
+          <Link
+            to="/lp"
+            className="text-ink-faint underline underline-offset-4 transition-colors hover:text-accent"
+          >
+            店舗紹介ページ
+          </Link>
+          <Link
+            to="/contact"
+            className="text-ink-faint underline underline-offset-4 transition-colors hover:text-accent"
+          >
+            問い合わせフォーム
+          </Link>
+        </span>
       </div>
     </AppShell>
   );

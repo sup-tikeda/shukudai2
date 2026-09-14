@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, TextField } from "~/components/ui/form";
 import {
   AppShell,
   Card,
   EmptyState,
+  ListToolbar,
+  matchesQuery,
   PageHeader,
   Row,
   RowList,
@@ -16,6 +18,7 @@ import {
   listCustomers,
   updateCustomer,
 } from "~/server/customers";
+import { lookupAddress } from "~/server/postal";
 
 export const Route = createFileRoute("/customers")({
   // 未ログインの場合、listCustomers がサーバー側で /login へリダイレクトする
@@ -35,6 +38,56 @@ function CustomersPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState("name");
+  const [addressPending, setAddressPending] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  /**
+   * 郵便番号から住所を引いて住所欄へ入れる（元FileMakerの「住所入力」と同じ動作）。
+   * 外部APIへの負荷を避けるため、入力のたびではなくボタンを押した時だけ呼ぶ。
+   */
+  async function handleLookupAddress() {
+    const form = formRef.current;
+    if (!form) return;
+    const postalCode = new FormData(form).get("postalCode");
+
+    setFormError(null);
+    setAddressPending(true);
+    try {
+      const { address } = await lookupAddress({
+        data: { postalCode: String(postalCode ?? "") },
+      });
+      const addressInput = form.elements.namedItem("address");
+      if (addressInput instanceof HTMLInputElement) {
+        addressInput.value = address;
+      }
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "住所の検索に失敗しました。",
+      );
+    } finally {
+      setAddressPending(false);
+    }
+  }
+
+  // 絞り込みと並べ替えは画面側で行う（件数が多くないため、入力即反映を優先）
+  const visibleCustomers = customers
+    .filter((c) =>
+      matchesQuery(query, [
+        c.name,
+        c.phone,
+        c.mobilePhone,
+        c.email,
+        c.address,
+        c.contactName,
+      ]),
+    )
+    .sort((a, b) =>
+      sortKey === "newest"
+        ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        : a.name.localeCompare(b.name, "ja"),
+    );
 
   async function reload() {
     await router.invalidate();
@@ -124,12 +177,37 @@ function CustomersPage() {
         </p>
       ) : null}
 
-      <Card title="顧客一覧" count={`${customers.length} 名`}>
-        {customers.length === 0 ? (
-          <EmptyState message="顧客が登録されていません。「＋ 新規登録」から追加してください。" />
+      <ListToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="顧客名・電話番号・住所で絞り込み"
+        sortKey={sortKey}
+        onSortChange={setSortKey}
+        sortOptions={[
+          { value: "name", label: "名前順" },
+          { value: "newest", label: "登録が新しい順" },
+        ]}
+      />
+
+      <Card
+        title="顧客一覧"
+        count={
+          query
+            ? `${visibleCustomers.length} / ${customers.length} 名`
+            : `${customers.length} 名`
+        }
+      >
+        {visibleCustomers.length === 0 ? (
+          <EmptyState
+            message={
+              customers.length === 0
+                ? "顧客が登録されていません。「＋ 新規登録」から追加してください。"
+                : "条件に合う顧客が見つかりませんでした。"
+            }
+          />
         ) : (
           <RowList>
-            {customers.map((customer) => (
+            {visibleCustomers.map((customer) => (
               <Row
                 key={customer.id}
                 actions={
@@ -178,7 +256,11 @@ function CustomersPage() {
         onOpenChange={(open) => !open && setModal(null)}
         title={modal?.mode === "edit" ? "顧客を編集" : "顧客を新規登録"}
       >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4"
+        >
           <TextField
             name="name"
             label="顧客名"
@@ -227,13 +309,27 @@ function CustomersPage() {
               }
             />
           </div>
-          <TextField
-            name="address"
-            label="住所"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.customer.address ?? "") : ""
-            }
-          />
+          <div className="flex flex-col gap-2">
+            <TextField
+              name="address"
+              label="住所"
+              defaultValue={
+                modal?.mode === "edit" ? (modal.customer.address ?? "") : ""
+              }
+            />
+            <button
+              type="button"
+              onClick={handleLookupAddress}
+              disabled={addressPending}
+              className={button({
+                variant: "outline",
+                size: "sm",
+                className: "self-start",
+              })}
+            >
+              {addressPending ? "検索中..." : "郵便番号から住所を入力"}
+            </button>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField
               name="addressLine2"

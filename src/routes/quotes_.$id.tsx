@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { button, Modal, TextField } from "~/components/ui/form";
+import { button, Modal, SelectField, TextField } from "~/components/ui/form";
 import {
   AppShell,
   Badge,
@@ -12,14 +12,17 @@ import {
   RowList,
 } from "~/components/ui/layout";
 import {
+  quoteDocTypeValues,
   quoteItemInputSchema,
   quoteItemUpdateInputSchema,
+  quoteUpdateInputSchema,
 } from "~/lib/validation";
 import {
   createQuoteItem,
   deleteQuote,
   deleteQuoteItem,
   getQuote,
+  updateQuote,
   updateQuoteItem,
 } from "~/server/quotes";
 
@@ -41,6 +44,9 @@ function QuoteDetailPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const [headerOpen, setHeaderOpen] = useState(false);
+  const [headerError, setHeaderError] = useState<string | null>(null);
+  const [headerPending, setHeaderPending] = useState(false);
 
   async function reload() {
     await router.invalidate();
@@ -90,6 +96,39 @@ function QuoteDetailPage() {
       );
     } finally {
       setPending(false);
+    }
+  }
+
+  /** 種別・タイトル・税率・送付日・通信欄をあとから直す */
+  async function handleHeaderSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = Object.fromEntries(new FormData(event.currentTarget));
+
+    setHeaderError(null);
+    setHeaderPending(true);
+    try {
+      const parsed = quoteUpdateInputSchema.safeParse({
+        ...formData,
+        id: quote.id,
+        caseId: quote.caseId,
+      });
+      if (!parsed.success) {
+        setHeaderError(
+          parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+        );
+        return;
+      }
+      await updateQuote({ data: parsed.data });
+      setHeaderOpen(false);
+      await reload();
+    } catch (error) {
+      setHeaderError(
+        error instanceof Error
+          ? error.message
+          : "保存に失敗しました。時間をおいて再度お試しください。",
+      );
+    } finally {
+      setHeaderPending(false);
     }
   }
 
@@ -154,6 +193,16 @@ function QuoteDetailPage() {
             >
               印刷 / PDF
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setHeaderError(null);
+                setHeaderOpen(true);
+              }}
+              className={button({ variant: "outline", size: "sm" })}
+            >
+              編集
+            </button>
             <button
               type="button"
               onClick={handleDeleteQuote}
@@ -273,6 +322,56 @@ function QuoteDetailPage() {
           )}
         </Card>
       </div>
+
+      <Modal
+        open={headerOpen}
+        onOpenChange={setHeaderOpen}
+        title={`${quote.docType}の内容を編集`}
+      >
+        <form onSubmit={handleHeaderSubmit} className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectField
+              name="docType"
+              label="種別"
+              options={quoteDocTypeValues.map((v) => ({ value: v, label: v }))}
+              defaultValue={quote.docType}
+            />
+            <TextField
+              name="taxRate"
+              label="消費税率(%)"
+              defaultValue={String(quote.taxRate)}
+            />
+          </div>
+          <TextField
+            name="title"
+            label="タイトル"
+            defaultValue={quote.title ?? ""}
+          />
+          <TextField
+            name="sentOn"
+            label="送付日"
+            type="date"
+            defaultValue={quote.sentOn ?? ""}
+          />
+          <TextField
+            name="note"
+            label="通信欄"
+            multiline
+            rows={3}
+            defaultValue={quote.note ?? ""}
+          />
+
+          {headerError ? (
+            <p className="text-sm text-red-400" role="alert">
+              {headerError}
+            </p>
+          ) : null}
+
+          <button type="submit" className={button()} disabled={headerPending}>
+            {headerPending ? "保存中..." : "保存"}
+          </button>
+        </form>
+      </Modal>
 
       <Modal
         open={modal !== null}

@@ -53,6 +53,13 @@ export function QuoteDocument({ quote, items, summary, shop }: PrintData) {
         <div className="w-[78mm] shrink-0 text-xs">
           <p className="text-right">No. {String(quote.docNumber).padStart(6, "0")}</p>
           <p className="text-right">発行日 {formatDate(quote.createdOn)}</p>
+          {shop?.logoUrl ? (
+            <img
+              src={shop.logoUrl}
+              alt=""
+              className="mt-2 ml-auto h-12 w-auto object-contain"
+            />
+          ) : null}
           <p className="mt-2 text-base font-bold">
             {shop?.companyName || "（会社名未設定）"}
           </p>

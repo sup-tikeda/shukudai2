@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, SelectField, TextField } from "~/components/ui/form";
 import {
@@ -7,6 +7,8 @@ import {
   Card,
   docTypeTone,
   EmptyState,
+  ListToolbar,
+  matchesQuery,
   PageHeader,
   Row,
   RowList,
@@ -16,6 +18,10 @@ import { listCaseOptions } from "~/server/cases";
 import { createQuote, listQuotes } from "~/server/quotes";
 
 export const Route = createFileRoute("/quotes")({
+  // 案件詳細から «＋ 見積・請求を作成» で来た時、その案件を選んだ状態でフォームを開くため
+  // 戻り値を任意項目にしておく（付けずにこの画面へ来るリンクも成り立たせるため）
+  validateSearch: (search: Record<string, unknown>): { new?: string } =>
+    typeof search.new === "string" ? { new: search.new } : {},
   loader: async () => ({
     quotes: await listQuotes(),
     caseOptions: await listCaseOptions(),
@@ -25,11 +31,38 @@ export const Route = createFileRoute("/quotes")({
 
 function QuotesPage() {
   const { quotes, caseOptions } = Route.useLoaderData();
+  const { new: presetCaseId } = Route.useSearch();
   const router = useRouter();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState("newest");
+
+  // 案件詳細から遷移してきた場合は、その案件を選んだ状態で作成フォームを開く
+  useEffect(() => {
+    if (presetCaseId) {
+      setModalOpen(true);
+    }
+  }, [presetCaseId]);
+
+  const visibleQuotes = quotes
+    .filter((q) =>
+      matchesQuery(query, [
+        q.title,
+        q.docType,
+        q.customerName,
+        q.vehicleName,
+        q.caseTitle,
+        String(q.docNumber),
+      ]),
+    )
+    .sort((a, b) => {
+      if (sortKey === "amount") return b.total - a.total;
+      if (sortKey === "number") return a.docNumber - b.docNumber;
+      return b.createdOn.localeCompare(a.createdOn);
+    });
 
   async function reload() {
     await router.invalidate();
@@ -94,12 +127,38 @@ function QuotesPage() {
         </p>
       ) : null}
 
-      <Card title="見積・請求一覧" count={`${quotes.length} 件`}>
-        {quotes.length === 0 ? (
-          <EmptyState message="見積・請求が登録されていません。" />
+      <ListToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="タイトル・顧客・車両・案件・番号で絞り込み"
+        sortKey={sortKey}
+        onSortChange={setSortKey}
+        sortOptions={[
+          { value: "newest", label: "作成日が新しい順" },
+          { value: "amount", label: "金額が大きい順" },
+          { value: "number", label: "書類番号順" },
+        ]}
+      />
+
+      <Card
+        title="見積・請求一覧"
+        count={
+          query
+            ? `${visibleQuotes.length} / ${quotes.length} 件`
+            : `${quotes.length} 件`
+        }
+      >
+        {visibleQuotes.length === 0 ? (
+          <EmptyState
+            message={
+              quotes.length === 0
+                ? "見積・請求が登録されていません。"
+                : "条件に合う見積・請求が見つかりませんでした。"
+            }
+          />
         ) : (
           <RowList>
-            {quotes.map((q) => (
+            {visibleQuotes.map((q) => (
               <Row
                 key={q.id}
                 actions={
@@ -159,7 +218,7 @@ function QuotesPage() {
             name="caseId"
             label="対象案件"
             options={caseSelectOptions}
-            defaultValue={caseSelectOptions[0]?.value}
+            defaultValue={presetCaseId ?? caseSelectOptions[0]?.value}
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectField

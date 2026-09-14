@@ -240,9 +240,21 @@ export const shopSettingsInputSchema = z.object({
     .refine((v) => v === undefined || z.email().safeParse(v).success, {
       message: "メールアドレスの形式が正しくありません",
     }),
+  logoUrl: optionalText(500),
   taxRate: z.coerce.number().min(0).max(100),
   invoiceNumber: optionalText(50),
   bankInfo: optionalText(500),
 });
 
 export type ShopSettingsInput = z.infer<typeof shopSettingsInputSchema>;
+
+/** 郵便番号から住所を引くときの入力（ハイフンあり・なしどちらも受け付ける） */
+export const postalCodeSchema = z.object({
+  postalCode: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/[^0-9]/g, ""))
+    .refine((v) => v.length === 7, {
+      message: "郵便番号は7桁で入力してください",
+    }),
+});

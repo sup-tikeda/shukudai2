@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, SelectField, TextField } from "~/components/ui/form";
 import {
@@ -6,6 +6,8 @@ import {
   Badge,
   Card,
   EmptyState,
+  ListToolbar,
+  matchesQuery,
   PageHeader,
   Row,
   RowList,
@@ -21,6 +23,10 @@ import {
 } from "~/server/vehicles";
 
 export const Route = createFileRoute("/vehicles")({
+  // 顧客詳細から «＋ 車両を登録» で来た時、その顧客を選んだ状態でフォームを開くため
+  // 戻り値を任意項目にしておく（付けずにこの画面へ来るリンクも成り立たせるため）
+  validateSearch: (search: Record<string, unknown>): { new?: string } =>
+    typeof search.new === "string" ? { new: search.new } : {},
   loader: async () => ({
     vehicles: await listVehicles(),
     customerOptions: await listCustomerOptions(),
@@ -51,6 +57,7 @@ const colorOptions = [
 
 function VehiclesPage() {
   const { vehicles, customerOptions } = Route.useLoaderData();
+  const { new: presetCustomerId } = Route.useSearch();
   const router = useRouter();
 
   const [modal, setModal] = useState<
@@ -59,6 +66,37 @@ function VehiclesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState("model");
+
+  // 顧客詳細から遷移してきた場合は、その顧客を選んだ状態で登録フォームを開く
+  useEffect(() => {
+    if (presetCustomerId) {
+      setModal({ mode: "create" });
+    }
+  }, [presetCustomerId]);
+
+  const visibleVehicles = vehicles
+    .filter((v) =>
+      matchesQuery(query, [
+        v.modelName,
+        v.maker,
+        v.vehicleNumber,
+        v.customerName,
+      ]),
+    )
+    .sort((a, b) => {
+      if (sortKey === "inspection") {
+        // 車検期限が近い順。未設定は最後に回す
+        return (a.inspectionExpiresOn ?? "9999-12-31").localeCompare(
+          b.inspectionExpiresOn ?? "9999-12-31",
+        );
+      }
+      if (sortKey === "customer") {
+        return a.customerName.localeCompare(b.customerName, "ja");
+      }
+      return a.modelName.localeCompare(b.modelName, "ja");
+    });
 
   async function reload() {
     await router.invalidate();
@@ -172,12 +210,38 @@ function VehiclesPage() {
         </p>
       ) : null}
 
-      <Card title="車両一覧" count={`${vehicles.length} 台`}>
-        {vehicles.length === 0 ? (
-          <EmptyState message="車両が登録されていません。" />
+      <ListToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="モデル名・車両番号・メーカー・所有者で絞り込み"
+        sortKey={sortKey}
+        onSortChange={setSortKey}
+        sortOptions={[
+          { value: "model", label: "モデル名順" },
+          { value: "inspection", label: "車検期限が近い順" },
+          { value: "customer", label: "所有者順" },
+        ]}
+      />
+
+      <Card
+        title="車両一覧"
+        count={
+          query
+            ? `${visibleVehicles.length} / ${vehicles.length} 台`
+            : `${vehicles.length} 台`
+        }
+      >
+        {visibleVehicles.length === 0 ? (
+          <EmptyState
+            message={
+              vehicles.length === 0
+                ? "車両が登録されていません。"
+                : "条件に合う車両が見つかりませんでした。"
+            }
+          />
         ) : (
           <RowList>
-            {vehicles.map((vehicle) => (
+            {visibleVehicles.map((vehicle) => (
               <Row
                 key={vehicle.id}
                 actions={
@@ -237,7 +301,7 @@ function VehiclesPage() {
             defaultValue={
               modal?.mode === "edit"
                 ? modal.vehicle.customerId
-                : customerSelectOptions[0]?.value
+                : (presetCustomerId ?? customerSelectOptions[0]?.value)
             }
           />
           <TextField

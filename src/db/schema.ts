@@ -154,6 +154,8 @@ export const shopSettings = pgTable("shop_settings", {
   fax: varchar("fax", { length: 30 }),
   website: varchar("website", { length: 200 }),
   email: varchar("email", { length: 255 }),
+  // 帳票に印字するロゴ。画像ファイルの保管場所を持たないため、URLで指定する
+  logoUrl: varchar("logo_url", { length: 500 }),
   taxRate: numeric("tax_rate", { precision: 5, scale: 2, mode: "number" })
     .notNull()
     .default(10),

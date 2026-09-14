@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, SelectField, TextField } from "~/components/ui/form";
 import {
@@ -6,7 +6,10 @@ import {
   Badge,
   Card,
   EmptyState,
+  ListToolbar,
+  matchesQuery,
   PageHeader,
+  remainingDays,
   Row,
   RowList,
   statusTone,
@@ -26,6 +29,10 @@ import {
 import { listVehicleOptions } from "~/server/vehicles";
 
 export const Route = createFileRoute("/cases")({
+  // 車両詳細から «＋ 案件を登録» で来た時、その車両を選んだ状態でフォームを開くため
+  // 戻り値を任意項目にしておく（付けずにこの画面へ来るリンクも成り立たせるため）
+  validateSearch: (search: Record<string, unknown>): { new?: string } =>
+    typeof search.new === "string" ? { new: search.new } : {},
   loader: async () => ({
     cases: await listCases(),
     vehicleOptions: await listVehicleOptions(),
@@ -40,6 +47,7 @@ const assigneeOptions = ["勝又", "佐藤", "鈴木", "その他"];
 
 function CasesPage() {
   const { cases, vehicleOptions } = Route.useLoaderData();
+  const { new: presetVehicleId } = Route.useSearch();
   const router = useRouter();
 
   const [modal, setModal] = useState<
@@ -48,6 +56,45 @@ function CasesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState("start");
+
+  // 車両詳細から遷移してきた場合は、その車両を選んだ状態で作成フォームを開く
+  useEffect(() => {
+    if (presetVehicleId) {
+      setModal({ mode: "create" });
+    }
+  }, [presetVehicleId]);
+
+  const statusOrder: Record<string, number> = {
+    作業中: 0,
+    未作業: 1,
+    完了済み: 2,
+  };
+
+  const visibleCases = cases
+    .filter((c) =>
+      matchesQuery(query, [
+        c.title,
+        c.status,
+        c.assignee,
+        c.vehicleName,
+        c.customerName,
+      ]),
+    )
+    .sort((a, b) => {
+      if (sortKey === "status") {
+        return (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
+      }
+      if (sortKey === "end") {
+        return (a.plannedEndOn ?? "9999-12-31").localeCompare(
+          b.plannedEndOn ?? "9999-12-31",
+        );
+      }
+      return (a.plannedStartOn ?? "9999-12-31").localeCompare(
+        b.plannedStartOn ?? "9999-12-31",
+      );
+    });
 
   async function reload() {
     await router.invalidate();
@@ -161,12 +208,38 @@ function CasesPage() {
         </p>
       ) : null}
 
-      <Card title="案件一覧" count={`${cases.length} 件`}>
-        {cases.length === 0 ? (
-          <EmptyState message="案件が登録されていません。" />
+      <ListToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="案件名・担当者・車両・顧客で絞り込み"
+        sortKey={sortKey}
+        onSortChange={setSortKey}
+        sortOptions={[
+          { value: "start", label: "開始予定日順" },
+          { value: "end", label: "終了予定日が近い順" },
+          { value: "status", label: "ステータス順" },
+        ]}
+      />
+
+      <Card
+        title="案件一覧"
+        count={
+          query
+            ? `${visibleCases.length} / ${cases.length} 件`
+            : `${cases.length} 件`
+        }
+      >
+        {visibleCases.length === 0 ? (
+          <EmptyState
+            message={
+              cases.length === 0
+                ? "案件が登録されていません。"
+                : "条件に合う案件が見つかりませんでした。"
+            }
+          />
         ) : (
           <RowList>
-            {cases.map((c) => (
+            {visibleCases.map((c) => (
               <Row
                 key={c.id}
                 actions={
@@ -198,6 +271,7 @@ function CasesPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium break-words">{c.title}</p>
                   <Badge tone={statusTone(c.status)}>{c.status}</Badge>
+                  {c.invoiced ? <Badge tone="done">請求済み</Badge> : null}
                 </div>
                 <p className="mt-0.5 text-sm text-ink-muted break-words">
                   {c.customerName} ／ {c.vehicleName} ／ 担当:{" "}
@@ -205,6 +279,9 @@ function CasesPage() {
                 </p>
                 <p className="mt-0.5 text-sm text-ink-faint tabular-nums">
                   {c.plannedStartOn || "-"} 〜 {c.plannedEndOn || "-"}
+                  {c.status !== "完了済み" && c.plannedEndOn ? (
+                    <RemainingDays endOn={c.plannedEndOn} />
+                  ) : null}
                 </p>
               </Row>
             ))}
@@ -225,7 +302,7 @@ function CasesPage() {
             defaultValue={
               modal?.mode === "edit"
                 ? modal.item.vehicleId
-                : vehicleSelectOptions[0]?.value
+                : (presetVehicleId ?? vehicleSelectOptions[0]?.value)
             }
           />
           <TextField
@@ -304,5 +381,18 @@ function CasesPage() {
         </form>
       </Modal>
     </AppShell>
+  );
+}
+
+/** 終了予定日までの残り日数。期限切れは赤、3日以内はオレンジで注意を促す。 */
+function RemainingDays({ endOn }: { endOn: string }) {
+  const days = remainingDays(endOn);
+  if (days === null) return null;
+  const tone =
+    days === 0 ? "text-red-400" : days <= 3 ? "text-accent" : "text-ink-faint";
+  return (
+    <span className={`ml-2 ${tone}`}>
+      {days === 0 ? "（期限超過）" : `（残り${days}日）`}
+    </span>
   );
 }

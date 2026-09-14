@@ -244,7 +244,7 @@ await db.insert(quoteItems).values([
 ]);
 
 await db.insert(shopSettings).values({
-  companyName: "サンプルバイクショップ",
+  companyName: "バイクショップイケダ",
   postalCode: "170-0001",
   address: "東京都豊島区西巣鴨1-1",
   phone: "03-9999-8888",

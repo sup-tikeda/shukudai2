@@ -85,9 +85,10 @@ function VehicleDetailPage() {
           actions={
             <Link
               to="/cases"
+              search={{ new: vehicle.id }}
               className={button({ variant: "outline", size: "sm" })}
             >
-              案件を登録
+              ＋ 案件を登録
             </Link>
           }
         >
@@ -111,6 +112,7 @@ function VehicleDetailPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium break-words">{c.title}</p>
                     <Badge tone={statusTone(c.status)}>{c.status}</Badge>
+                    {c.invoiced ? <Badge tone="done">請求済み</Badge> : null}
                   </div>
                   <p className="mt-0.5 text-sm text-ink-muted">
                     担当: {c.assignee || "未定"} ／ {c.plannedStartOn || "-"} 〜{" "}

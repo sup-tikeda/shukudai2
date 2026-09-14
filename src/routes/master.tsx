@@ -418,6 +418,11 @@ function ShopSettingsSection({
           />
         </div>
         <TextField
+          name="logoUrl"
+          label="ロゴ画像のURL（帳票に印字されます）"
+          defaultValue={settings.logoUrl ?? ""}
+        />
+        <TextField
           name="bankInfo"
           label="振込先"
           multiline

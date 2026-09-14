@@ -166,6 +166,89 @@ export function EmptyState({ message }: { message: string }) {
   );
 }
 
+/**
+ * 一覧の絞り込み・並べ替え。
+ * 扱う件数が多くない業務のため、サーバーへ問い合わせ直さず画面側で処理する
+ * （入力するたびに即座に絞り込めるようにするため）。
+ */
+export function ListToolbar({
+  query,
+  onQueryChange,
+  placeholder,
+  sortKey,
+  onSortChange,
+  sortOptions,
+}: {
+  query: string;
+  onQueryChange: (value: string) => void;
+  placeholder: string;
+  sortKey: string;
+  onSortChange: (value: string) => void;
+  sortOptions: { value: string; label: string }[];
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="relative min-w-0 flex-1">
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder={placeholder}
+          aria-label="絞り込み"
+          className="w-full rounded-md border border-line bg-surface py-2 pr-3 pl-9 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-ink-faint"
+        >
+          ○
+        </span>
+      </div>
+      <select
+        value={sortKey}
+        onChange={(event) => onSortChange(event.target.value)}
+        aria-label="並べ替え"
+        className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+      >
+        {sortOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {query ? (
+        <button
+          type="button"
+          onClick={() => onQueryChange("")}
+          className={button({ variant: "ghost", size: "sm" })}
+        >
+          条件をクリア
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * 終了予定日までの残り日数（元FileMakerの「作業：残り日数」に相当）。
+ * 過ぎている場合は 0 を返す。日付が未設定なら null。
+ */
+export function remainingDays(endOn: string | null | undefined) {
+  if (!endOn) return null;
+  const end = new Date(`${endOn}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((end.getTime() - today.getTime()) / 86_400_000);
+  return diff < 0 ? 0 : diff;
+}
+
+/** 検索語がどれかの項目に含まれるかを判定する（全角・半角と大文字小文字は区別しない） */
+export function matchesQuery(query: string, values: (string | null | undefined)[]) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return values.some((value) => (value ?? "").toLowerCase().includes(needle));
+}
+
 const badge = tv({
   base: "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
   variants: {

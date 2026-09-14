@@ -9,6 +9,7 @@ import {
   docTypeTone,
   EmptyState,
   PageHeader,
+  remainingDays,
   Row,
   RowList,
   statusTone,
@@ -61,7 +62,20 @@ function CaseDetailPage() {
           <DetailItem label="担当者">{item.assignee}</DetailItem>
           <DetailItem label="ステータス">{item.status}</DetailItem>
           <DetailItem label="開始予定日">{item.plannedStartOn}</DetailItem>
-          <DetailItem label="終了予定日">{item.plannedEndOn}</DetailItem>
+          <DetailItem label="終了予定日">
+            {item.plannedEndOn ? (
+              <>
+                {item.plannedEndOn}
+                {item.status !== "完了済み" ? (
+                  <span className="ml-2 text-ink-faint">
+                    {remainingDays(item.plannedEndOn) === 0
+                      ? "（期限超過）"
+                      : `（残り${remainingDays(item.plannedEndOn)}日）`}
+                  </span>
+                ) : null}
+              </>
+            ) : null}
+          </DetailItem>
           <DetailItem label="案件内容" wide>
             {item.content}
           </DetailItem>
@@ -81,9 +95,10 @@ function CaseDetailPage() {
           actions={
             <Link
               to="/quotes"
+              search={{ new: item.id }}
               className={button({ variant: "outline", size: "sm" })}
             >
-              見積・請求を作成
+              ＋ 見積・請求を作成
             </Link>
           }
         >

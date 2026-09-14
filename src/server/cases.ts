@@ -1,15 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { asc, eq } from "drizzle-orm";
-import { cases, customers, vehicles } from "~/db/schema";
+import { cases, customers, quotes, vehicles } from "~/db/schema";
 import { db } from "~/lib/db";
 import { requireSession } from "~/server/authGuard";
 import { caseIdSchema, caseInputSchema, caseUpdateInputSchema } from "~/lib/validation";
 
-/** 案件の一覧（開始予定日順）。車両名・所有者名をあわせて返す。 */
+/**
+ * 案件の一覧（開始予定日順）。車両名・所有者名に加えて、
+ * 請求書が発行済みかどうか（元の「請求_判別」に相当）も返す。
+ */
 export const listCases = createServerFn({ method: "GET" }).handler(async () => {
   await requireSession();
 
-  return db
+  const rows = await db
     .select({
       id: cases.id,
       title: cases.title,
@@ -19,12 +22,22 @@ export const listCases = createServerFn({ method: "GET" }).handler(async () => {
       plannedEndOn: cases.plannedEndOn,
       vehicleId: cases.vehicleId,
       vehicleName: vehicles.modelName,
+      customerId: vehicles.customerId,
       customerName: customers.name,
     })
     .from(cases)
     .innerJoin(vehicles, eq(cases.vehicleId, vehicles.id))
     .innerJoin(customers, eq(vehicles.customerId, customers.id))
     .orderBy(asc(cases.plannedStartOn));
+
+  // 請求書が1件でもあれば「請求済み」とみなす
+  const invoiced = await db
+    .selectDistinct({ caseId: quotes.caseId })
+    .from(quotes)
+    .where(eq(quotes.docType, "請求書"));
+  const invoicedIds = new Set(invoiced.map((row) => row.caseId));
+
+  return rows.map((row) => ({ ...row, invoiced: invoicedIds.has(row.id) }));
 });
 
 /** 案件名だけの一覧（見積・請求登録フォームの選択肢用） */
