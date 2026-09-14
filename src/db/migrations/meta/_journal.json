@@ -29,6 +29,13 @@
       "when": 1789022402076,
       "tag": "0003_wooden_kat_farrell",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789353128229,
+      "tag": "0004_pretty_chronomancer",
+      "breakpoints": true
     }
   ]
 }

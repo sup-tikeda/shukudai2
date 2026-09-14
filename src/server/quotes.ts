@@ -1,0 +1,167 @@
+import { createServerFn } from "@tanstack/react-start";
+import { asc, eq } from "drizzle-orm";
+import { cases, customers, quoteItems, quotes, vehicles } from "~/db/schema";
+import { db } from "~/lib/db";
+import { requireSession } from "~/server/authGuard";
+import {
+  quoteIdSchema,
+  quoteInputSchema,
+  quoteItemIdSchema,
+  quoteItemInputSchema,
+  quoteItemUpdateInputSchema,
+  quoteUpdateInputSchema,
+} from "~/lib/validation";
+
+/** 明細項目から合計を計算する（税抜合計・消費税額・税込合計・数量）。保存はせず都度計算する。 */
+function summarizeItems(
+  items: { quantity: number; unitPrice: number }[],
+  taxRate: number,
+) {
+  const quantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.quantity * item.unitPrice,
+    0,
+  );
+  const tax = Math.round(subtotal * (taxRate / 100));
+  return { quantity, subtotal, tax, total: subtotal + tax };
+}
+
+/** 見積・請求の一覧（作成日順）。案件名・顧客名・車両名と集計金額をあわせて返す。 */
+export const listQuotes = createServerFn({ method: "GET" }).handler(async () => {
+  await requireSession();
+
+  const rows = await db
+    .select({
+      id: quotes.id,
+      caseId: quotes.caseId,
+      title: quotes.title,
+      docType: quotes.docType,
+      taxRate: quotes.taxRate,
+      createdOn: quotes.createdOn,
+      sentOn: quotes.sentOn,
+      caseTitle: cases.title,
+      customerName: customers.name,
+      vehicleName: vehicles.modelName,
+    })
+    .from(quotes)
+    .innerJoin(cases, eq(quotes.caseId, cases.id))
+    .innerJoin(vehicles, eq(cases.vehicleId, vehicles.id))
+    .innerJoin(customers, eq(vehicles.customerId, customers.id))
+    .orderBy(asc(quotes.createdOn));
+
+  const items = await db
+    .select({
+      quoteId: quoteItems.quoteId,
+      quantity: quoteItems.quantity,
+      unitPrice: quoteItems.unitPrice,
+    })
+    .from(quoteItems);
+
+  return rows.map((row) => ({
+    ...row,
+    ...summarizeItems(
+      items.filter((item) => item.quoteId === row.id),
+      row.taxRate,
+    ),
+  }));
+});
+
+/** 見積・請求タイトルだけの一覧は不要（案件単位で作成するため案件一覧から選ぶ） */
+
+/** 見積・請求1件の詳細（明細項目・集計金額を含む） */
+export const getQuote = createServerFn({ method: "GET" })
+  .validator(quoteIdSchema)
+  .handler(async ({ data }) => {
+    await requireSession();
+
+    const [quote] = await db
+      .select({
+        id: quotes.id,
+        caseId: quotes.caseId,
+        caseTitle: cases.title,
+        customerName: customers.name,
+        vehicleName: vehicles.modelName,
+        title: quotes.title,
+        docType: quotes.docType,
+        taxRate: quotes.taxRate,
+        note: quotes.note,
+        createdOn: quotes.createdOn,
+        sentOn: quotes.sentOn,
+      })
+      .from(quotes)
+      .innerJoin(cases, eq(quotes.caseId, cases.id))
+      .innerJoin(vehicles, eq(cases.vehicleId, vehicles.id))
+      .innerJoin(customers, eq(vehicles.customerId, customers.id))
+      .where(eq(quotes.id, data.id));
+    if (!quote) {
+      throw new Error("見積・請求が見つかりません。");
+    }
+
+    const items = await db
+      .select()
+      .from(quoteItems)
+      .where(eq(quoteItems.quoteId, data.id))
+      .orderBy(asc(quoteItems.createdAt));
+
+    return { ...quote, items, summary: summarizeItems(items, quote.taxRate) };
+  });
+
+/** 見積・請求を新規作成する（明細項目は別途追加する） */
+export const createQuote = createServerFn({ method: "POST" })
+  .validator(quoteInputSchema)
+  .handler(async ({ data }) => {
+    await requireSession();
+
+    const [saved] = await db
+      .insert(quotes)
+      .values(data)
+      .returning({ id: quotes.id });
+    return { id: saved.id };
+  });
+
+/** 見積・請求を更新する */
+export const updateQuote = createServerFn({ method: "POST" })
+  .validator(quoteUpdateInputSchema)
+  .handler(async ({ data }) => {
+    await requireSession();
+
+    const { id, ...values } = data;
+    await db.update(quotes).set(values).where(eq(quotes.id, id));
+  });
+
+/** 見積・請求を削除する（明細項目も連鎖して削除される） */
+export const deleteQuote = createServerFn({ method: "POST" })
+  .validator(quoteIdSchema)
+  .handler(async ({ data }) => {
+    await requireSession();
+
+    await db.delete(quotes).where(eq(quotes.id, data.id));
+  });
+
+/** 明細項目を追加する */
+export const createQuoteItem = createServerFn({ method: "POST" })
+  .validator(quoteItemInputSchema)
+  .handler(async ({ data }) => {
+    await requireSession();
+
+    await db.insert(quoteItems).values(data);
+  });
+
+/** 明細項目を更新する */
+export const updateQuoteItem = createServerFn({ method: "POST" })
+  .validator(quoteItemUpdateInputSchema)
+  .handler(async ({ data }) => {
+    await requireSession();
+
+    const { id, ...values } = data;
+    await db.update(quoteItems).set(values).where(eq(quoteItems.id, id));
+  });
+
+/** 明細項目を削除する */
+export const deleteQuoteItem = createServerFn({ method: "POST" })
+  .validator(quoteItemIdSchema)
+  .handler(async ({ data }) => {
+    await requireSession();
+
+    await db.delete(quoteItems).where(eq(quoteItems.id, data.id));
+  });

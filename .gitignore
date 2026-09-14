@@ -11,3 +11,6 @@ src/routeTree.gen.ts
 .claude/
 .dev.vars
 .wrangler/
+# FileMaker DDR（設計情報）の解析元データ。アプリの設計参考資料であり実行コードではないため、
+# リポジトリには含めない（ローカルの参考資料として残しておく）。
+/バイクショップ店舗管理/

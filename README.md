@@ -1,7 +1,10 @@
-# 社内備品 貸出リスト
+# バイクショップ店舗管理
 
 TanStack Start + Vite / ark-ui / Tailwind CSS + Tailwind Variants / zod / better-auth / drizzle-orm /
-PostgreSQL / Vitest 構成の社内向けアプリです。
+PostgreSQL / Vitest 構成の、バイクショップ（二輪整備・販売店）向け受付管理アプリです。
+FileMaker製の同名アプリ（`バイクショップ店舗管理.fmp12`）のDDR（設計情報）解析結果をもとに、
+テーブル構成・画面構成を移植しています。ログイン・認証の仕組みは以前の練習課題
+（社内備品貸出管理）からそのまま引き継いでいます。
 
 **現在の構成**：アプリは **Cloudflare Workers**、DBは **Neon（PostgreSQL）** で動いており、
 接続は **Hyperdrive** を経由します（PCの電源に関係なく常時稼働）。
@@ -52,16 +55,19 @@ docker compose up -d --build                       # app + nginx + cloudflared +
 
 - ログイン（アカウント名／パスワード。自己登録は不可で、初期アカウントはCLIで発行）
 - ログイン後のダッシュボード（`/`）から各画面へ遷移
-- 備品の貸出登録（備品名・借りた人・貸出日）、貸出中の一覧表示と「返却」（`/loans`）
+- 顧客管理（`/customers`、`/customers/$id`）：顧客の登録・編集・削除、保有車両の一覧
+- 車両管理（`/vehicles`、`/vehicles/$id`）：車両（バイク）の登録・編集・削除、関連する案件の一覧
+- 案件管理（`/cases`、`/cases/$id`）：整備・修理などの作業案件の登録・編集・削除、関連する見積・請求の一覧
+- 見積・請求管理（`/quotes`、`/quotes/$id`）：見積書・請求書の作成、明細項目の追加・編集・削除と自動集計
+  （数量・税抜合計・消費税額・税込合計はすべて明細から都度計算し、保存はしない）
 - マスタ管理（`/master`。admin権限のみ）
   - 社員マスタ：ログインアカウントの新規作成・編集（名前・アカウント名・権限・パスワード）・削除
-  - 備品マスタ：備品名の新規作成・編集・削除（貸出登録フォームとはまだ連動していません）
-  - 顧客マスタ：顧客名・担当者名・電話番号・メールアドレス・住所の新規作成・編集・削除
-    （現時点では他機能とは連携しない単体のマスタ）
+  - 会社設定：見積・請求書に印字する自社情報と既定の消費税率（全体で1レコードのみ）
 - 問い合わせフォーム → 担当者へメール通知（`/contact`。DBには保存しません）
 
-貸出データは PostgreSQL に保存されるため、ログインできる人全員が同じ一覧を見ます。
-「返却」を押した行は一覧から消えますが、レコードは削除せず `returned_at` に日時を入れて履歴として残します。
+顧客 → 車両 → 案件 → 見積・請求 → 明細項目、の順に親子関係を持つ構成です（削除すると
+関連する子レコードも連鎖して削除されます）。データはPostgreSQLに保存されるため、
+ログインできる人全員が同じ内容を見ます（会社設定のみadmin限定）。
 
 ## 実行環境
 
@@ -467,42 +473,59 @@ Docker の secrets、CI/CD のシークレット機能など）で渡します�
 
 ```
 src/
-├── routes/               # ファイルベースルーティング
-│   ├── __root.tsx         # HTMLドキュメント全体の枠
-│   ├── index.tsx          # ダッシュボード（要ログイン。各画面への入口）
-│   ├── loans.tsx          # 備品貸出リスト（要ログイン）
-│   ├── master.tsx         # マスタ管理（社員・備品。要admin）
-│   ├── login.tsx          # ログイン
-│   ├── contact.tsx        # 問い合わせフォーム
-│   └── api/auth/$.ts      # better-auth のHTTPハンドラ
+├── server.ts              # Cloudflare Workers 向けエントリ（Basic認証＋DB接続の受け渡し）
+├── routes/                 # ファイルベースルーティング
+│   ├── __root.tsx           # HTMLドキュメント全体の枠
+│   ├── index.tsx            # ダッシュボード（要ログイン。各画面への入口）
+│   ├── customers.tsx         # 顧客一覧・作成・編集・削除（要ログイン）
+│   ├── customers_.$id.tsx    # 顧客詳細＋保有車両一覧（末尾の"_"は非ネスト化のため）
+│   ├── vehicles.tsx          # 車両一覧・作成・編集・削除
+│   ├── vehicles_.$id.tsx     # 車両詳細＋関連案件一覧
+│   ├── cases.tsx             # 案件一覧・作成・編集・削除
+│   ├── cases_.$id.tsx        # 案件詳細＋関連する見積・請求一覧
+│   ├── quotes.tsx            # 見積・請求一覧・作成（自動集計込み）
+│   ├── quotes_.$id.tsx       # 見積・請求詳細＋明細項目の追加・編集・削除
+│   ├── master.tsx            # マスタ管理（社員・会社設定。要admin）
+│   ├── login.tsx             # ログイン
+│   ├── contact.tsx           # 問い合わせフォーム
+│   └── api/auth/$.ts        # better-auth のHTTPハンドラ
 ├── server/
-│   ├── loans.ts          # サーバー関数（一覧・登録・返却）
-│   ├── accounts.ts       # サーバー関数（社員=ログインアカウントのCRUD、admin専用）
-│   ├── equipmentItems.ts # サーバー関数（備品マスタのCRUD、admin専用）
-│   ├── session.ts        # ダッシュボード用のログイン中ユーザー取得
-│   ├── authGuard.ts      # admin権限チェックの共通処理
-│   └── inquiries.ts      # サーバー関数（問い合わせのメール通知）
-├── components/ui/        # ark-ui + tailwind-variants の共通部品（Modalを含む）
-├── lib/                  # auth / db / mailer / env / zodスキーマ
-├── db/                   # drizzleスキーマ・マイグレーション・シード
-└── styles/app.css        # Tailwind エントリ
+│   ├── customers.ts        # サーバー関数（顧客のCRUD）
+│   ├── vehicles.ts         # サーバー関数（車両のCRUD、所有者名・案件数を結合）
+│   ├── cases.ts            # サーバー関数（案件のCRUD、車両名・顧客名を結合）
+│   ├── quotes.ts           # サーバー関数（見積・請求＋明細項目のCRUD、集計計算）
+│   ├── shopSettings.ts     # サーバー関数（会社設定の取得・更新、admin専用）
+│   ├── accounts.ts         # サーバー関数（社員=ログインアカウントのCRUD、admin専用）
+│   ├── session.ts          # ダッシュボード用のログイン中ユーザー取得
+│   ├── authGuard.ts        # ログイン必須／admin権限チェックの共通処理
+│   └── inquiries.ts        # サーバー関数（問い合わせのメール通知）
+├── components/ui/          # ark-ui + tailwind-variants の共通部品（Modalを含む）
+├── lib/                    # auth / db / mailer / env / zodスキーマ
+├── db/                     # drizzleスキーマ・マイグレーション・シード
+└── styles/app.css          # Tailwind エントリ
 
 nginx/
-└── default.conf          # アプリへのリバースプロキシ設定
+└── default.conf            # アプリへのリバースプロキシ設定（パターンAでのみ使用）
 ```
+
+`customers_.$id.tsx` のように、一覧画面（`customers.tsx`）と同じプレフィックスを持つ詳細画面は
+**末尾に`_`を付けて非ネスト化**している。TanStack Routerは`customers.$id.tsx`のような命名だと
+`customers.tsx`の子ルート（レイアウト）として扱い、親に`<Outlet />`が無いと詳細画面の内容が
+表示されない（この問題に実際にハマったため記録している）。
 
 `src/db/auth-schema.ts` と `src/routeTree.gen.ts` は自動生成ファイルです。手で編集しないでください。
 
 ## 実装上の注意点
 
-- **ログインの判定はサーバー側で行う**。`src/server/loans.ts` の `requireSession()` を各サーバー関数の
-  先頭で呼び、未ログインなら `/login` へリダイレクトします。画面側の表示制御だけに頼っていません。
-- **`server.mjs` はアプリ本体を動的importで読み込む**。アプリは読み込んだ時点で環境変数を検証するため、
-  静的importにすると `.env` の読み込みより先に評価されて起動に失敗します。
-- **コンテナのタイムゾーンを `Asia/Tokyo` に固定している**。貸出日の初期値（今日）がサーバーと
-  ブラウザでずれないようにするためです。alpine は `tzdata` を入れないと `TZ` の指定が無視されます。
-- **返却は「未返却のものだけ」を対象に更新する**。二重に押しても、他の人が先に返却していても
-  エラーにならず、一覧を読み直せば消えています。
+- **ログインの判定はサーバー側で行う**。[authGuard.ts](src/server/authGuard.ts) の `requireSession()`
+  （ログイン必須）／`requireAdminSession()`（admin必須）を各サーバー関数の先頭で呼び、条件を満たさなければ
+  `/login` または `/` へリダイレクトします。画面側の表示制御だけに頼っていません。
+- **`server.mjs` はアプリ本体を動的importで読み込む**（パターンA＝Node向けビルドの場合）。アプリは
+  読み込んだ時点で環境変数を検証するため、静的importにすると `.env` の読み込みより先に評価されて
+  起動に失敗します。
+- **コンテナのタイムゾーンを `Asia/Tokyo` に固定している**（パターンA）。日付を扱う項目の初期値が
+  サーバーとブラウザでずれないようにするためです。alpine は `tzdata` を入れないと `TZ` の指定が
+  無視されます。
 - pnpm 12.3.4 は `@tanstack/start-server-core` が使う npm エイリアス依存 `h3-v2`（= `h3`）を
   再解決できず、依存を追加しようとすると 404 で失敗します。[pnpm-workspace.yaml](pnpm-workspace.yaml)
   の `overrides` で解決先を明示して回避しています。この行を消すと `pnpm add` が通らなくなります。
@@ -587,10 +610,17 @@ Cookieをサブドメイン間で共有するための設定（`advanced.crossSu
 13. **Cloudflare Workers + Hyperdrive へ移行し、Railwayを廃止**：従量課金を止めるため、
     アプリをCloudflare Workersへ移した。DBは引き続きNeonで、接続はHyperdrive経由。
     Railwayのサービスは削除済み（「Cloudflare Workers + Hyperdrive + Neon 構成」参照）。
+14. **バイクショップ店舗管理への全面刷新**：FileMaker製アプリ（`バイクショップ店舗管理.fmp12`）を
+    DDRParserで解析した設計情報をもとに、社内備品貸出管理の業務画面（貸出リスト・備品マスタ・
+    顧客マスタ）をすべて廃止し、顧客・車両・案件・見積/請求の4画面＋会社設定に作り替えた。
+    ログイン・認証（`user`/`session`/`account`/`verification`テーブル、社員マスタ）はそのまま
+    引き継ぎ、既存の`customers`テーブルは項目を拡張して流用した。ダミーデータを投入して動作確認済み。
+    実装中、詳細画面（`customers_.$id.tsx`等）が一覧画面の子ルートとして扱われ表示されない問題に
+    遭遇し、TanStack Routerの非ネスト化規約（末尾`_`）で解決した（「ディレクトリ構成」参照）。
 
 ## 次に検討すること
 
-1. 返却済みを含む貸出履歴の閲覧・検索画面
+1. 見積・請求のPDF出力・印刷画面（元のFileMakerには存在したが、今回は未実装）
 2. メール通知の実装（Workersでは nodemailer が使えないため、Resend など HTTP API 型の
    サービスへの切り替えが前提）
 3. 社内ダッシュボードのURLが決まったら、`trustedOrigins` とCookie共有設定を追加する
