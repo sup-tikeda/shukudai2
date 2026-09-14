@@ -254,20 +254,44 @@ export const shopSettingsInputSchema = z.object({
 
 export type ShopSettingsInput = z.infer<typeof shopSettingsInputSchema>;
 
-/** 担当者マスタの管理 */
-export const assigneeInputSchema = z.object({
-  name: z.string().trim().min(1, "担当者名を入力してください").max(30),
-  sortOrder: z.coerce.number().int().min(0).max(9999),
+/**
+ * 社員の詳細情報。ログインアカウント（名前・アカウント名・権限・パスワード）とは
+ * 別のテーブルに持つため、入力の検証も分けている。
+ *
+ * 氏名・生年月日・住所は個人情報にあたるため、実在の従業員の情報を入れる場合は
+ * 閲覧できる人の範囲と保存期間を決めたうえで運用すること。
+ */
+export const staffProfileInputSchema = z.object({
+  nameKana: optionalText(60),
+  birthday: optionalDate,
+  hiredOn: optionalDate,
+  // 入っていれば「退職」、空なら「在職中」として扱う
+  retiredOn: optionalDate,
+  position: optionalText(30),
+  qualification: optionalText(100),
+  postalCode: optionalText(10),
+  address: optionalText(200),
+  addressLine2: optionalText(200),
+  building: optionalText(100),
+  phone: optionalText(30),
+  mobilePhone: optionalText(30),
+  email: z
+    .string()
+    .trim()
+    .max(255)
+    .optional()
+    .transform((v) => (v ? v : undefined))
+    .refine((v) => v === undefined || z.email().safeParse(v).success, {
+      message: "メールアドレスの形式が正しくありません",
+    }),
+  note: optionalText(2000),
 });
 
-export type AssigneeInput = z.infer<typeof assigneeInputSchema>;
+export type StaffProfileInput = z.infer<typeof staffProfileInputSchema>;
 
-export const assigneeUpdateInputSchema = assigneeInputSchema.extend({
-  id: z.uuid(),
-});
-
-export const assigneeIdSchema = z.object({
-  id: z.uuid(),
+/** 保存時はどの社員の情報かを添える（better-auth のユーザーIDはUUIDとは限らないため文字列） */
+export const staffProfileSaveInputSchema = staffProfileInputSchema.extend({
+  userId: z.string().min(1),
 });
 
 /** 郵便番号から住所を引くときの入力（ハイフンあり・なしどちらも受け付ける） */

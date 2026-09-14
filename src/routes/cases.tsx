@@ -26,7 +26,7 @@ import {
   listCases,
   updateCase,
 } from "~/server/cases";
-import { listAssignees } from "~/server/assignees";
+import { listStaffOptions } from "~/server/accounts";
 import { listVehicleOptions } from "~/server/vehicles";
 
 export const Route = createFileRoute("/cases")({
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/cases")({
   loader: async () => ({
     cases: await listCases(),
     vehicleOptions: await listVehicleOptions(),
-    assignees: await listAssignees(),
+    staff: await listStaffOptions(),
   }),
   component: CasesPage,
 });
@@ -45,8 +45,31 @@ export const Route = createFileRoute("/cases")({
 type CaseRow = Awaited<ReturnType<typeof listCases>>[number];
 type CaseDetail = Awaited<ReturnType<typeof getCase>>;
 
+/**
+ * 担当者の選択肢を組み立てる。
+ *
+ * 案件には担当者の「名前」を保存しており、社員マスタとは外部キーで結んでいない。
+ * 退職などで社員マスタから消えても過去の案件の記録を変えないためだが、
+ * その案件を編集したときに担当者が黙って空になっては困るので、
+ * いま設定されている名前が一覧に無ければ選択肢に足しておく。
+ */
+function assigneeOptions(
+  staff: { name: string }[],
+  current: string | null | undefined,
+) {
+  const options = [
+    { value: "", label: "未定" },
+    ...staff.map((member) => ({ value: member.name, label: member.name })),
+  ];
+
+  if (current && !staff.some((member) => member.name === current)) {
+    options.push({ value: current, label: `${current}（社員マスタにありません）` });
+  }
+  return options;
+}
+
 function CasesPage() {
-  const { cases, vehicleOptions, assignees } = Route.useLoaderData();
+  const { cases, vehicleOptions, staff } = Route.useLoaderData();
   const { new: presetVehicleId } = Route.useSearch();
   const router = useRouter();
 
@@ -321,11 +344,11 @@ function CasesPage() {
             <SelectField
               name="assignee"
               label="担当者"
-              // 選択肢は担当者マスタ（設定画面）で管理する
-              options={[
-                { value: "", label: "未定" },
-                ...assignees.map((a) => ({ value: a.name, label: a.name })),
-              ]}
+              // 選択肢は社員マスタ（設定画面）の名前
+              options={assigneeOptions(
+                staff,
+                modal?.mode === "edit" ? modal.item.assignee : null,
+              )}
               defaultValue={
                 modal?.mode === "edit" ? (modal.item.assignee ?? "") : ""
               }

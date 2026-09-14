@@ -13,6 +13,8 @@ import {
 // better-auth CLI (`pnpm auth:schema`) が生成する認証テーブル定義。
 // 手で編集せず、認証設定を変えたら再生成する。
 export * from "./auth-schema";
+// 社員の詳細情報から外部キーで参照するため、値としても取り込む
+import { user } from "./auth-schema";
 
 /**
  * 顧客。バイクショップの受付管理における中心的なマスタ。
@@ -181,16 +183,39 @@ export const shopSettings = pgTable("shop_settings", {
 export type ShopSettings = typeof shopSettings.$inferSelect;
 
 /**
- * 担当者マスタ。案件の担当者を選ぶための選択肢。
+ * 社員の詳細情報。ログインアカウント（better-auth の `user`）と1対1で持つ。
  *
- * 案件側は名前を文字列で保持している（担当者が退職しても過去の案件の記録が変わらないため）。
- * このテーブルは「今選べる人」の一覧を管理するもので、案件との外部キー制約は持たない。
+ * `user` テーブルは better-auth CLI が生成するもので、認証設定を変えると作り直される。
+ * 項目を足すたびに消えては困るため、業務で使う情報はこちらに分けている。
+ * アカウントを削除したら詳細も一緒に消す（連鎖削除）。
+ *
+ * 年齢は保存せず生年月日だけを持ち、表示のたびに計算する（保存すると毎年ずれるため）。
+ *
+ * ここには氏名・生年月日・住所といった個人情報が入る。実在の従業員の情報を扱う場合は、
+ * 閲覧できる人の範囲と保存期間を決めたうえで運用すること（現状は admin のみ閲覧・編集可）。
  */
-export const assignees = pgTable("assignees", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 30 }).notNull(),
-  // 一覧・選択肢の並び順。小さいほど先に出す
-  sortOrder: integer("sort_order").notNull().default(0),
+export const staffProfiles = pgTable("staff_profiles", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  nameKana: varchar("name_kana", { length: 60 }),
+  birthday: date("birthday"),
+  hiredOn: date("hired_on"),
+  // 退職日。入っていれば「退職」、空なら「在職中」として扱う。
+  // 単なる在職フラグではなく日付にしているのは、いつ退職したかも残したいため。
+  // 退職した社員は案件の担当者の選択肢から外れるが、過去の案件に残った名前は変わらない。
+  retiredOn: date("retired_on"),
+  position: varchar("position", { length: 30 }),
+  qualification: varchar("qualification", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 10 }),
+  address: varchar("address", { length: 200 }),
+  addressLine2: varchar("address_line2", { length: 200 }),
+  building: varchar("building", { length: 100 }),
+  phone: varchar("phone", { length: 30 }),
+  mobilePhone: varchar("mobile_phone", { length: 30 }),
+  // 連絡先のメールアドレス。ログイン用のメールとは別に持つ
+  email: varchar("email", { length: 255 }),
+  note: text("note"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -200,4 +225,4 @@ export const assignees = pgTable("assignees", {
     .$onUpdate(() => /* @__PURE__ */ new Date()),
 });
 
-export type Assignee = typeof assignees.$inferSelect;
+export type StaffProfile = typeof staffProfiles.$inferSelect;

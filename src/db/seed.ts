@@ -1,14 +1,15 @@
 import "dotenv/config";
-import { sql } from "drizzle-orm";
+import { asc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
-  assignees,
   cases,
   customers,
   quoteItems,
   quotes,
   shopSettings,
+  staffProfiles,
+  user,
   vehicles,
 } from "./schema";
 
@@ -252,12 +253,6 @@ await db.insert(quoteItems).values([
   { quoteId: quote6.id, name: "エンジンオイル（1L）", quantity: 1, unitPrice: 1500 },
 ]);
 
-await db.insert(assignees).values([
-  { name: "山田 太郎", sortOrder: 1 },
-  { name: "高橋 次郎", sortOrder: 2 },
-  { name: "小林 三郎", sortOrder: 3 },
-]);
-
 await db.insert(shopSettings).values({
   companyName: "バイクショップイケダ",
   postalCode: "170-0001",
@@ -270,7 +265,59 @@ await db.insert(shopSettings).values({
   bankInfo: "サンプル銀行 本店 普通 1234567",
 });
 
-console.log("ダミーデータ（顧客4件・車両6件・案件8件・見積/請求6件・明細16件・会社設定1件）を投入しました。");
+// 社員の詳細情報。ログインアカウントは `pnpm user:create` で別途作るため、
+// ここでは「すでに居るアカウント」に対してだけダミーの詳細を付ける。
+// 氏名・生年月日・住所は個人情報にあたるため、実在しない値だけを使っている。
+const existingUsers = await db
+  .select({ id: user.id, name: user.name })
+  .from(user)
+  .orderBy(asc(user.createdAt));
+
+const staffDummies = [
+  {
+    nameKana: "てんちょう",
+    birthday: "1979-04-12",
+    hiredOn: "1998-04-01",
+    position: "店長",
+    qualification: "二級二輪自動車整備士",
+    postalCode: "170-0001",
+    address: "東京都豊島区西巣鴨",
+    addressLine2: "1-1-1",
+    mobilePhone: "090-0000-1111",
+    email: "tencho@example.test",
+    note: "創業メンバー。車検・重整備を担当。",
+  },
+  {
+    nameKana: "てすと たろう",
+    birthday: "1996-09-03",
+    hiredOn: "2021-04-01",
+    position: "整備士",
+    qualification: "三級二輪自動車整備士",
+    postalCode: "171-0021",
+    address: "東京都豊島区西池袋",
+    addressLine2: "2-2-2",
+    building: "サンプルハイツ101",
+    mobilePhone: "090-0000-2222",
+    email: "test-taro@example.test",
+    note: "一般整備・タイヤ交換を担当。",
+  },
+];
+
+if (existingUsers.length > 0) {
+  await db
+    .insert(staffProfiles)
+    .values(
+      existingUsers.map((u, index) => ({
+        userId: u.id,
+        ...staffDummies[index % staffDummies.length],
+      })),
+    )
+    .onConflictDoNothing();
+}
+
+console.log(
+  `ダミーデータ（顧客4件・車両6件・案件8件・見積/請求6件・明細16件・会社設定1件・社員詳細${existingUsers.length}件）を投入しました。`,
+);
 
 // postgres-js は接続を保持し続けるため、明示的に閉じてプロセスを終わらせる
 process.exit(0);
