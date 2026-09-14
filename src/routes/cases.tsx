@@ -5,13 +5,11 @@ import {
   AppShell,
   Badge,
   Card,
-  EmptyState,
+  DataTable,
   ListToolbar,
   matchesQuery,
   PageHeader,
   remainingDays,
-  Row,
-  RowList,
   statusTone,
 } from "~/components/ui/layout";
 import {
@@ -256,64 +254,106 @@ function CasesPage() {
             : `${cases.length} 件`
         }
       >
-        {visibleCases.length === 0 ? (
-          <EmptyState
-            message={
-              cases.length === 0
-                ? "案件が登録されていません。"
-                : "条件に合う案件が見つかりませんでした。"
-            }
-          />
-        ) : (
-          <RowList>
-            {visibleCases.map((c) => (
-              <Row
-                key={c.id}
-                actions={
-                  <>
-                    <Link
-                      to="/cases/$id"
-                      params={{ id: c.id }}
-                      className={button({ variant: "outline", size: "sm" })}
-                    >
-                      詳細
-                    </Link>
-                    <button
-                      type="button"
-                      className={button({ variant: "ghost", size: "sm" })}
-                      onClick={() => openEdit(c)}
-                    >
-                      編集
-                    </button>
-                    <button
-                      type="button"
-                      className={button({ variant: "ghost", size: "sm" })}
-                      onClick={() => handleDelete(c)}
-                    >
-                      削除
-                    </button>
-                  </>
-                }
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium break-words">{c.title}</p>
-                  <Badge tone={statusTone(c.status)}>{c.status}</Badge>
-                  {c.invoiced ? <Badge tone="done">請求済み</Badge> : null}
-                </div>
-                <p className="mt-0.5 text-sm text-ink-muted break-words">
-                  {c.customerName} ／ {c.vehicleName} ／ 担当:{" "}
-                  {c.assignee || "未定"}
-                </p>
-                <p className="mt-0.5 text-sm text-ink-faint tabular-nums">
-                  {c.plannedStartOn || "-"} 〜 {c.plannedEndOn || "-"}
+        <DataTable
+          rows={visibleCases}
+          rowKey={(c) => c.id}
+          emptyMessage={
+            cases.length === 0
+              ? "案件が登録されていません。"
+              : "条件に合う案件が見つかりませんでした。"
+          }
+          columns={[
+            {
+              key: "title",
+              header: "案件名",
+              // 幅を指定しない列は内容に合わせて縮むので、ここで残りを吸収させる
+              width: "w-full",
+              render: (c) => (
+                <p className="font-medium break-words">{c.title}</p>
+              ),
+            },
+            {
+              key: "status",
+              header: "ステータス",
+              render: (c) => (
+                <Badge tone={statusTone(c.status)}>{c.status}</Badge>
+              ),
+            },
+            {
+              key: "target",
+              header: "顧客・車両",
+              render: (c) => (
+                <>
+                  <p className="break-words">{c.customerName}</p>
+                  <p className="mt-0.5 text-xs text-ink-faint break-words">
+                    {c.vehicleName}
+                  </p>
+                </>
+              ),
+            },
+            {
+              key: "assignee",
+              header: "担当者",
+              render: (c) =>
+                c.assignee || <span className="text-ink-faint">未定</span>,
+            },
+            {
+              key: "planned",
+              header: "作業予定",
+              render: (c) => (
+                <div className="whitespace-nowrap tabular-nums">
+                  <span>
+                    {c.plannedStartOn || "-"} 〜 {c.plannedEndOn || "-"}
+                  </span>
                   {c.status !== "完了済み" && c.plannedEndOn ? (
                     <RemainingDays endOn={c.plannedEndOn} />
                   ) : null}
-                </p>
-              </Row>
-            ))}
-          </RowList>
-        )}
+                </div>
+              ),
+            },
+            {
+              key: "invoiced",
+              header: "請求",
+              align: "center",
+              render: (c) =>
+                c.invoiced ? (
+                  <Badge tone="done">済み</Badge>
+                ) : (
+                  <span className="text-ink-faint">-</span>
+                ),
+            },
+            {
+              key: "actions",
+              header: "",
+              align: "right",
+              render: (c) => (
+                <div className="flex justify-end gap-2 whitespace-nowrap">
+                  <Link
+                    to="/cases/$id"
+                    params={{ id: c.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => openEdit(c)}
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => handleDelete(c)}
+                  >
+                    削除
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       <Modal

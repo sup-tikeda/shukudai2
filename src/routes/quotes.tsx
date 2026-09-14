@@ -5,13 +5,11 @@ import {
   AppShell,
   Badge,
   Card,
+  DataTable,
   docTypeTone,
-  EmptyState,
   ListToolbar,
   matchesQuery,
   PageHeader,
-  Row,
-  RowList,
 } from "~/components/ui/layout";
 import { quoteDocTypeValues, quoteInputSchema } from "~/lib/validation";
 import { listCaseOptions } from "~/server/cases";
@@ -152,64 +150,105 @@ function QuotesPage() {
             : `${quotes.length} 件`
         }
       >
-        {visibleQuotes.length === 0 ? (
-          <EmptyState
-            message={
-              quotes.length === 0
-                ? "見積・請求が登録されていません。"
-                : "条件に合う見積・請求が見つかりませんでした。"
-            }
-          />
-        ) : (
-          <RowList>
-            {visibleQuotes.map((q) => (
-              <Row
-                key={q.id}
-                actions={
-                  <>
-                    <Link
-                      to="/quotes/$id"
-                      params={{ id: q.id }}
-                      className={button({ variant: "outline", size: "sm" })}
-                    >
-                      詳細
-                    </Link>
-                    <Link
-                      to="/quotes/$id/print"
-                      params={{ id: q.id }}
-                      className={button({ variant: "ghost", size: "sm" })}
-                    >
-                      印刷
-                    </Link>
-                  </>
-                }
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
-                  <span className="text-xs text-ink-faint tabular-nums">
-                    No.{String(q.docNumber).padStart(6, "0")}
-                  </span>
-                  <p className="font-medium break-words">
-                    {q.title || "（タイトル未設定）"}
+        <DataTable
+          rows={visibleQuotes}
+          rowKey={(q) => q.id}
+          emptyMessage={
+            quotes.length === 0
+              ? "見積・請求が登録されていません。"
+              : "条件に合う見積・請求が見つかりませんでした。"
+          }
+          columns={[
+            {
+              key: "docType",
+              header: "種別",
+              render: (q) => (
+                <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
+              ),
+            },
+            {
+              key: "docNumber",
+              header: "番号",
+              render: (q) => (
+                <span className="whitespace-nowrap text-ink-faint tabular-nums">
+                  {String(q.docNumber).padStart(6, "0")}
+                </span>
+              ),
+            },
+            {
+              key: "title",
+              header: "タイトル",
+              // 幅を指定しない列は内容に合わせて縮むので、ここで残りを吸収させる
+              width: "w-full",
+              render: (q) => (
+                <p className="font-medium break-words">
+                  {q.title || (
+                    <span className="text-ink-faint">（タイトル未設定）</span>
+                  )}
+                </p>
+              ),
+            },
+            {
+              key: "target",
+              header: "顧客・車両",
+              render: (q) => (
+                <>
+                  <p className="break-words">{q.customerName}</p>
+                  <p className="mt-0.5 text-xs text-ink-faint break-words">
+                    {q.vehicleName}
                   </p>
-                </div>
-                <p className="mt-0.5 text-sm text-ink-muted break-words">
-                  {q.customerName} ／ {q.vehicleName} ／ {q.caseTitle}
-                </p>
-                <p className="mt-1 text-sm tabular-nums">
-                  <span className="font-bold text-accent">
+                </>
+              ),
+            },
+            {
+              key: "total",
+              header: "金額（税込）",
+              align: "right",
+              render: (q) => (
+                <>
+                  <p className="font-bold whitespace-nowrap text-accent tabular-nums">
                     ¥{q.total.toLocaleString()}
-                  </span>
-                  <span className="text-ink-faint">
-                    {" "}
-                    （税抜 ¥{q.subtotal.toLocaleString()}／数量 {q.quantity}）
-                    ／ 作成日 {q.createdOn}
-                  </span>
-                </p>
-              </Row>
-            ))}
-          </RowList>
-        )}
+                  </p>
+                  <p className="mt-0.5 text-xs whitespace-nowrap text-ink-faint tabular-nums">
+                    税抜 ¥{q.subtotal.toLocaleString()}
+                  </p>
+                </>
+              ),
+            },
+            {
+              key: "createdOn",
+              header: "発行日",
+              render: (q) => (
+                <span className="whitespace-nowrap tabular-nums">
+                  {q.createdOn}
+                </span>
+              ),
+            },
+            {
+              key: "actions",
+              header: "",
+              align: "right",
+              render: (q) => (
+                <div className="flex justify-end gap-2 whitespace-nowrap">
+                  <Link
+                    to="/quotes/$id"
+                    params={{ id: q.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                  <Link
+                    to="/quotes/$id/print"
+                    params={{ id: q.id }}
+                    className={button({ variant: "ghost", size: "sm" })}
+                  >
+                    印刷
+                  </Link>
+                </div>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       <Modal

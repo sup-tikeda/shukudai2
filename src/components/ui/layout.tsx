@@ -358,11 +358,101 @@ export function Card({
         </div>
       ) : null}
       {fill ? (
-        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div className="min-h-0 flex-1 overflow-auto">{children}</div>
       ) : (
         children
       )}
     </section>
+  );
+}
+
+/**
+ * 一覧の表。項目ごとに列を分けて並べる。
+ *
+ * 1行にまとめて書くより、列で揃っているほうが同じ項目を縦に見比べられるため、
+ * 件数の多い一覧画面ではこちらを使う（詳細画面の小さな一覧は `Row` のまま）。
+ *
+ * 見出し行は `sticky` でカードの中に貼り付ける。カードの中身だけがスクロールするので、
+ * 下までスクロールしても「どの列が何か」が分からなくならない。
+ */
+export type Column<T> = {
+  /** Reactのkeyと、列の識別に使う */
+  key: string;
+  header: ReactNode;
+  /** 数値や操作ボタンなど、左揃え以外にしたい列で使う */
+  align?: "left" | "right" | "center";
+  /**
+   * 列幅の指定（Tailwindのクラス）。
+   * 幅を指定しない列は内容に合わせて縮むため、伸ばしたい列に `w-full` を付ける。
+   */
+  width?: string;
+  render: (row: T) => ReactNode;
+};
+
+export function DataTable<T>({
+  columns,
+  rows,
+  rowKey,
+  emptyMessage,
+}: {
+  columns: Column<T>[];
+  rows: T[];
+  rowKey: (row: T) => string;
+  emptyMessage: string;
+}) {
+  if (rows.length === 0) {
+    return <EmptyState message={emptyMessage} />;
+  }
+
+  const alignOf = (align: Column<T>["align"]) =>
+    align === "right"
+      ? "text-right"
+      : align === "center"
+        ? "text-center"
+        : "text-left";
+
+  return (
+    <table className="w-full border-collapse text-sm">
+      <thead>
+        <tr>
+          {columns.map((column) => (
+            <th
+              key={column.key}
+              scope="col"
+              className={[
+                // カードの中身がスクロールしても、見出し行だけは上に残す
+                "sticky top-0 z-10 border-b border-line bg-surface-raised px-4 py-2.5",
+                "text-xs font-bold tracking-wide whitespace-nowrap text-ink-faint",
+                alignOf(column.align),
+                column.width ?? "",
+              ].join(" ")}
+            >
+              {column.header}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr
+            key={rowKey(row)}
+            className="border-b border-line transition-colors last:border-b-0 hover:bg-surface-raised"
+          >
+            {columns.map((column) => (
+              <td
+                key={column.key}
+                className={[
+                  "px-4 py-3 align-middle",
+                  alignOf(column.align),
+                ].join(" ")}
+              >
+                {column.render(row)}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

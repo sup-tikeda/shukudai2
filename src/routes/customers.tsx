@@ -5,12 +5,10 @@ import {
   AppShell,
   Badge,
   Card,
-  EmptyState,
+  DataTable,
   ListToolbar,
   matchesQuery,
   PageHeader,
-  Row,
-  RowList,
 } from "~/components/ui/layout";
 import { customerInputSchema, customerUpdateInputSchema } from "~/lib/validation";
 import {
@@ -202,69 +200,101 @@ function CustomersPage() {
             : `${customers.length} 名`
         }
       >
-        {visibleCustomers.length === 0 ? (
-          <EmptyState
-            message={
-              customers.length === 0
-                ? "顧客が登録されていません。「＋ 新規登録」から追加してください。"
-                : "条件に合う顧客が見つかりませんでした。"
-            }
-          />
-        ) : (
-          <RowList>
-            {visibleCustomers.map((customer) => (
-              <Row
-                key={customer.id}
-                actions={
-                  <>
-                    <Link
-                      to="/customers/$id"
-                      params={{ id: customer.id }}
-                      className={button({ variant: "outline", size: "sm" })}
-                    >
-                      詳細
-                    </Link>
-                    <button
-                      type="button"
-                      className={button({ variant: "ghost", size: "sm" })}
-                      onClick={() => {
-                        setFormError(null);
-                        setModal({ mode: "edit", customer });
-                      }}
-                    >
-                      編集
-                    </button>
-                    <button
-                      type="button"
-                      className={button({ variant: "ghost", size: "sm" })}
-                      onClick={() => handleDelete(customer)}
-                    >
-                      削除
-                    </button>
-                  </>
-                }
-              >
-                <div className="flex flex-wrap items-center gap-2">
+        <DataTable
+          rows={visibleCustomers}
+          rowKey={(customer) => customer.id}
+          emptyMessage={
+            customers.length === 0
+              ? "顧客が登録されていません。「＋ 新規登録」から追加してください。"
+              : "条件に合う顧客が見つかりませんでした。"
+          }
+          columns={[
+            {
+              key: "name",
+              header: "顧客名",
+              // 幅を指定しない列は内容に合わせて縮むので、ここで残りを吸収させる
+              width: "w-full",
+              render: (customer) => (
+                <>
                   <p className="font-medium break-words">{customer.name}</p>
-                  {/* 保有台数。一覧のまま顧客の規模が掴めるようにする */}
-                  <Badge tone={customer.vehicleCount > 0 ? "info" : "neutral"}>
-                    {customer.vehicleCount} 台
-                  </Badge>
+                  {customer.contactName ? (
+                    <p className="mt-0.5 text-xs text-ink-faint">
+                      担当：{customer.contactName}
+                    </p>
+                  ) : null}
+                </>
+              ),
+            },
+            {
+              key: "vehicles",
+              header: "保有台数",
+              align: "center",
+              render: (customer) => (
+                <Badge tone={customer.vehicleCount > 0 ? "info" : "neutral"}>
+                  {customer.vehicleCount} 台
+                </Badge>
+              ),
+            },
+            {
+              key: "phone",
+              header: "電話番号",
+              render: (customer) => (
+                <span className="whitespace-nowrap tabular-nums">
+                  {customer.phone || customer.mobilePhone || (
+                    <span className="text-ink-faint">-</span>
+                  )}
+                </span>
+              ),
+            },
+            {
+              key: "email",
+              header: "メール",
+              render: (customer) =>
+                customer.email || <span className="text-ink-faint">-</span>,
+            },
+            {
+              key: "address",
+              header: "住所",
+              render: (customer) =>
+                [customer.address, customer.addressLine2, customer.building]
+                  .filter(Boolean)
+                  .join(" ") || <span className="text-ink-faint">-</span>,
+            },
+            {
+              key: "actions",
+              header: "",
+              align: "right",
+              render: (customer) => (
+                <div className="flex justify-end gap-2 whitespace-nowrap">
+                  <Link
+                    to="/customers/$id"
+                    params={{ id: customer.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => {
+                      setFormError(null);
+                      setModal({ mode: "edit", customer });
+                    }}
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => handleDelete(customer)}
+                  >
+                    削除
+                  </button>
                 </div>
-                <p className="mt-0.5 text-sm text-ink-muted break-words">
-                  {[customer.phone, customer.mobilePhone, customer.email]
-                    .filter(Boolean)
-                    .join(" ／ ") || "連絡先未登録"}
-                </p>
-                <p className="mt-0.5 text-sm text-ink-faint break-words">
-                  {[customer.address, customer.addressLine2, customer.building]
-                    .filter(Boolean)
-                    .join(" ") || "住所未登録"}
-                </p>
-              </Row>
-            ))}
-          </RowList>
-        )}
+              ),
+            },
+          ]}
+        />
       </Card>
 
       <Modal

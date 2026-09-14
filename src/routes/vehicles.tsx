@@ -5,12 +5,11 @@ import {
   AppShell,
   Badge,
   Card,
-  EmptyState,
+  DataTable,
   ListToolbar,
   matchesQuery,
   PageHeader,
-  Row,
-  RowList,
+  remainingDays,
 } from "~/components/ui/layout";
 import { vehicleInputSchema, vehicleUpdateInputSchema } from "~/lib/validation";
 import { listCustomerOptions } from "~/server/customers";
@@ -235,61 +234,111 @@ function VehiclesPage() {
             : `${vehicles.length} 台`
         }
       >
-        {visibleVehicles.length === 0 ? (
-          <EmptyState
-            message={
-              vehicles.length === 0
-                ? "車両が登録されていません。"
-                : "条件に合う車両が見つかりませんでした。"
-            }
-          />
-        ) : (
-          <RowList>
-            {visibleVehicles.map((vehicle) => (
-              <Row
-                key={vehicle.id}
-                actions={
-                  <>
-                    <Link
-                      to="/vehicles/$id"
-                      params={{ id: vehicle.id }}
-                      className={button({ variant: "outline", size: "sm" })}
-                    >
-                      詳細
-                    </Link>
-                    <button
-                      type="button"
-                      className={button({ variant: "ghost", size: "sm" })}
-                      onClick={() => openEdit(vehicle)}
-                    >
-                      編集
-                    </button>
-                    <button
-                      type="button"
-                      className={button({ variant: "ghost", size: "sm" })}
-                      onClick={() => handleDelete(vehicle)}
-                    >
-                      削除
-                    </button>
-                  </>
-                }
-              >
-                <div className="flex flex-wrap items-center gap-2">
+        <DataTable
+          rows={visibleVehicles}
+          rowKey={(vehicle) => vehicle.id}
+          emptyMessage={
+            vehicles.length === 0
+              ? "車両が登録されていません。"
+              : "条件に合う車両が見つかりませんでした。"
+          }
+          columns={[
+            {
+              key: "model",
+              header: "モデル名",
+              // 幅を指定しない列は内容に合わせて縮むので、ここで残りを吸収させる
+              width: "w-full",
+              render: (vehicle) => (
+                <>
                   <p className="font-medium break-words">{vehicle.modelName}</p>
-                  {vehicle.maker ? (
-                    <Badge>{vehicle.maker}</Badge>
+                  {vehicle.vehicleNumber ? (
+                    <p className="mt-0.5 text-xs text-ink-faint">
+                      {vehicle.vehicleNumber}
+                    </p>
                   ) : null}
+                </>
+              ),
+            },
+            {
+              key: "maker",
+              header: "メーカー",
+              render: (vehicle) =>
+                vehicle.maker ? (
+                  <Badge>{vehicle.maker}</Badge>
+                ) : (
+                  <span className="text-ink-faint">-</span>
+                ),
+            },
+            {
+              key: "customer",
+              header: "所有者",
+              render: (vehicle) => (
+                <span className="break-words">{vehicle.customerName}</span>
+              ),
+            },
+            {
+              key: "cases",
+              header: "案件",
+              align: "center",
+              render: (vehicle) => (
+                <span className="whitespace-nowrap tabular-nums">
+                  {vehicle.caseCount} 件
+                </span>
+              ),
+            },
+            {
+              key: "inspection",
+              header: "車検期限",
+              render: (vehicle) => {
+                if (!vehicle.inspectionExpiresOn) {
+                  return <span className="text-ink-faint">-</span>;
+                }
+                // 期限が近い車両は色を変えて、案内漏れに気づけるようにする
+                const days = remainingDays(vehicle.inspectionExpiresOn);
+                const urgent = days !== null && days <= 60;
+                return (
+                  <span
+                    className={`whitespace-nowrap tabular-nums ${
+                      urgent ? "font-bold text-danger" : ""
+                    }`}
+                  >
+                    {vehicle.inspectionExpiresOn}
+                  </span>
+                );
+              },
+            },
+            {
+              key: "actions",
+              header: "",
+              align: "right",
+              render: (vehicle) => (
+                <div className="flex justify-end gap-2 whitespace-nowrap">
+                  <Link
+                    to="/vehicles/$id"
+                    params={{ id: vehicle.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => openEdit(vehicle)}
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => handleDelete(vehicle)}
+                  >
+                    削除
+                  </button>
                 </div>
-                <p className="mt-0.5 text-sm text-ink-muted break-words">
-                  {vehicle.customerName} ／ 案件 {vehicle.caseCount} 件
-                  {vehicle.inspectionExpiresOn
-                    ? ` ／ 車検期限 ${vehicle.inspectionExpiresOn}`
-                    : ""}
-                </p>
-              </Row>
-            ))}
-          </RowList>
-        )}
+              ),
+            },
+          ]}
+        />
       </Card>
 
       <Modal
