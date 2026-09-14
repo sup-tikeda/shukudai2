@@ -227,11 +227,26 @@ function QuotesPage() {
               options={quoteDocTypeValues.map((v) => ({ value: v, label: v }))}
               defaultValue="見積書"
             />
-            <TextField name="taxRate" label="消費税率(%)" defaultValue="10" />
+            <TextField
+              name="taxRate"
+              label="明細の既定の消費税率(%)"
+              defaultValue="10"
+            />
           </div>
           <TextField name="title" label="タイトル" />
           <TextField name="sentOn" label="送付日" type="date" />
-          <TextField name="note" label="通信欄" multiline rows={3} />
+          <TextField
+            name="note"
+            label="通信欄（帳票に印字されます）"
+            multiline
+            rows={3}
+          />
+          <TextField
+            name="internalNote"
+            label="社内メモ（帳票には出ません）"
+            multiline
+            rows={3}
+          />
 
           {formError ? (
             <p className="text-sm text-danger" role="alert">

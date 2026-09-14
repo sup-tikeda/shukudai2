@@ -18,6 +18,7 @@ import {
   quoteUpdateInputSchema,
 } from "~/lib/validation";
 import {
+  convertQuoteToInvoice,
   createQuoteItem,
   deleteQuote,
   deleteQuoteItem,
@@ -159,6 +160,26 @@ function QuoteDetailPage() {
     }
   }
 
+  /** 見積書から請求書を起こす。元の見積書は証跡として残す */
+  async function handleConvert() {
+    if (
+      !window.confirm(
+        "この見積書をもとに請求書を作成しますか？（見積書はそのまま残ります）",
+      )
+    ) {
+      return;
+    }
+    setListError(null);
+    try {
+      const created = await convertQuoteToInvoice({ data: { id: quote.id } });
+      await router.navigate({ to: "/quotes/$id", params: { id: created.id } });
+    } catch (error) {
+      setListError(
+        error instanceof Error ? error.message : "請求書の作成に失敗しました。",
+      );
+    }
+  }
+
   return (
     <AppShell>
       <PageHeader
@@ -193,6 +214,16 @@ function QuoteDetailPage() {
             >
               印刷 / PDF
             </Link>
+            {/* 見積書のときだけ。請求書から請求書は作らない */}
+            {quote.docType === "見積書" ? (
+              <button
+                type="button"
+                onClick={handleConvert}
+                className={button({ variant: "outline", size: "sm" })}
+              >
+                請求書を作成
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => {
@@ -235,11 +266,19 @@ function QuoteDetailPage() {
           </div>
           <div className="px-5 py-4">
             <p className="text-xs font-medium tracking-wide text-ink-faint uppercase">
-              消費税（{quote.taxRate}%）
+              消費税
             </p>
             <p className="mt-1 text-xl font-bold tabular-nums">
               ¥{quote.summary.tax.toLocaleString()}
             </p>
+            {/* 税率が複数あるときだけ内訳を出す（1種類ならくどくなるため） */}
+            {quote.summary.taxes.length > 1 ? (
+              <p className="mt-0.5 text-xs text-ink-faint tabular-nums">
+                {quote.summary.taxes
+                  .map((row) => `${row.rate}% ¥${row.tax.toLocaleString()}`)
+                  .join(" ／ ")}
+              </p>
+            ) : null}
           </div>
           <div className="bg-accent/10 px-5 py-4">
             <p className="text-xs font-medium tracking-wide text-accent uppercase">
@@ -253,6 +292,15 @@ function QuoteDetailPage() {
         {quote.note ? (
           <p className="border-t border-line px-5 py-3 text-sm text-ink-muted whitespace-pre-wrap">
             通信欄：{quote.note}
+          </p>
+        ) : null}
+        {/* 社内メモは帳票に印字されない。客先に出ないことが分かるよう明記する */}
+        {quote.internalNote ? (
+          <p className="border-t border-line px-5 py-3 text-sm text-ink-muted whitespace-pre-wrap">
+            <span className="font-bold text-ink-faint">
+              社内メモ（帳票には出ません）：
+            </span>
+            {quote.internalNote}
           </p>
         ) : null}
       </div>
@@ -315,6 +363,10 @@ function QuoteDetailPage() {
                     <span className="text-ink">
                       ¥{(item.quantity * item.unitPrice).toLocaleString()}
                     </span>
+                    <span className="text-ink-faint">
+                      {" "}
+                      （税率 {item.taxRate}%）
+                    </span>
                   </p>
                 </Row>
               ))}
@@ -338,7 +390,7 @@ function QuoteDetailPage() {
             />
             <TextField
               name="taxRate"
-              label="消費税率(%)"
+              label="明細の既定の消費税率(%)"
               defaultValue={String(quote.taxRate)}
             />
           </div>
@@ -347,18 +399,34 @@ function QuoteDetailPage() {
             label="タイトル"
             defaultValue={quote.title ?? ""}
           />
-          <TextField
-            name="sentOn"
-            label="送付日"
-            type="date"
-            defaultValue={quote.sentOn ?? ""}
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* 月末締めで前月日付の請求書を出すことがあるため、発行日は後から直せる */}
+            <TextField
+              name="createdOn"
+              label="発行日"
+              type="date"
+              defaultValue={quote.createdOn}
+            />
+            <TextField
+              name="sentOn"
+              label="送付日"
+              type="date"
+              defaultValue={quote.sentOn ?? ""}
+            />
+          </div>
           <TextField
             name="note"
-            label="通信欄"
+            label="通信欄（帳票に印字されます）"
             multiline
             rows={3}
             defaultValue={quote.note ?? ""}
+          />
+          <TextField
+            name="internalNote"
+            label="社内メモ（帳票には出ません）"
+            multiline
+            rows={3}
+            defaultValue={quote.internalNote ?? ""}
           />
 
           {headerError ? (
@@ -401,6 +469,16 @@ function QuoteDetailPage() {
               }
             />
           </div>
+          {/* 軽減税率の品目が混ざる場合に備え、明細ごとに税率を持たせている */}
+          <TextField
+            name="taxRate"
+            label="消費税率(%)"
+            defaultValue={
+              modal?.mode === "edit"
+                ? String(modal.item.taxRate)
+                : String(quote.taxRate)
+            }
+          />
 
           {formError ? (
             <p className="text-sm text-danger" role="alert">

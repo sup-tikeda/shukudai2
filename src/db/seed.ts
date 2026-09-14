@@ -2,7 +2,15 @@ import "dotenv/config";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { cases, customers, quoteItems, quotes, shopSettings, vehicles } from "./schema";
+import {
+  assignees,
+  cases,
+  customers,
+  quoteItems,
+  quotes,
+  shopSettings,
+  vehicles,
+} from "./schema";
 
 // Node で直接実行するスクリプトのため、`~/lib/db` は使わず自前で接続を作る
 // （`~/lib/db` は Cloudflare Workers 上での Hyperdrive 接続を前提にしている）。
@@ -141,7 +149,7 @@ const [case1, case2, case3, case4, case5, case6, case7, case8] = await db
       vehicleId: vehicle1.id,
       title: "定期点検",
       status: "完了済み",
-      assignee: "勝又",
+      assignee: "山田 太郎",
       plannedStartOn: "2026-08-01",
       plannedEndOn: "2026-08-01",
       workContent: "オイル交換・各部点検",
@@ -150,7 +158,7 @@ const [case1, case2, case3, case4, case5, case6, case7, case8] = await db
       vehicleId: vehicle1.id,
       title: "タイヤ交換",
       status: "未作業",
-      assignee: "佐藤",
+      assignee: "高橋 次郎",
       plannedStartOn: "2026-09-20",
       plannedEndOn: "2026-09-20",
       content: "前後タイヤの摩耗により交換希望",
@@ -159,7 +167,7 @@ const [case1, case2, case3, case4, case5, case6, case7, case8] = await db
       vehicleId: vehicle2.id,
       title: "バッテリー交換",
       status: "作業中",
-      assignee: "鈴木",
+      assignee: "小林 三郎",
       plannedStartOn: "2026-09-10",
       plannedEndOn: "2026-09-12",
     },
@@ -167,7 +175,7 @@ const [case1, case2, case3, case4, case5, case6, case7, case8] = await db
       vehicleId: vehicle3.id,
       title: "車検整備",
       status: "作業中",
-      assignee: "勝又",
+      assignee: "山田 太郎",
       plannedStartOn: "2026-09-05",
       plannedEndOn: "2026-09-15",
       content: "車検に伴う整備一式",
@@ -176,7 +184,7 @@ const [case1, case2, case3, case4, case5, case6, case7, case8] = await db
       vehicleId: vehicle4.id,
       title: "カスタムマフラー取付",
       status: "完了済み",
-      assignee: "佐藤",
+      assignee: "高橋 次郎",
       plannedStartOn: "2026-07-01",
       plannedEndOn: "2026-07-03",
     },
@@ -184,7 +192,7 @@ const [case1, case2, case3, case4, case5, case6, case7, case8] = await db
       vehicleId: vehicle4.id,
       title: "チェーン調整",
       status: "未作業",
-      assignee: "鈴木",
+      assignee: "小林 三郎",
       plannedStartOn: "2026-09-25",
       plannedEndOn: "2026-09-25",
     },
@@ -192,7 +200,7 @@ const [case1, case2, case3, case4, case5, case6, case7, case8] = await db
       vehicleId: vehicle5.id,
       title: "納車前点検",
       status: "完了済み",
-      assignee: "勝又",
+      assignee: "山田 太郎",
       plannedStartOn: "2026-06-01",
       plannedEndOn: "2026-06-01",
     },
@@ -200,7 +208,7 @@ const [case1, case2, case3, case4, case5, case6, case7, case8] = await db
       vehicleId: vehicle6.id,
       title: "エンジンオイル交換",
       status: "未作業",
-      assignee: "佐藤",
+      assignee: "高橋 次郎",
       plannedStartOn: "2026-09-18",
       plannedEndOn: "2026-09-18",
     },
@@ -232,8 +240,9 @@ await db.insert(quoteItems).values([
   { quoteId: quote3.id, name: "交換工賃", quantity: 1, unitPrice: 1500 },
 
   { quoteId: quote4.id, name: "車検基本料", quantity: 1, unitPrice: 20000 },
-  { quoteId: quote4.id, name: "自賠責保険料", quantity: 1, unitPrice: 9000 },
-  { quoteId: quote4.id, name: "重量税", quantity: 1, unitPrice: 5000 },
+  // 自賠責保険料・重量税は消費税がかからないため、明細ごとの税率を0%にしている
+  { quoteId: quote4.id, name: "自賠責保険料", quantity: 1, unitPrice: 9000, taxRate: 0 },
+  { quoteId: quote4.id, name: "重量税", quantity: 1, unitPrice: 5000, taxRate: 0 },
   { quoteId: quote4.id, name: "ブレーキパッド交換", quantity: 2, unitPrice: 3000 },
 
   { quoteId: quote5.id, name: "マフラー本体", quantity: 1, unitPrice: 45000 },
@@ -241,6 +250,12 @@ await db.insert(quoteItems).values([
 
   { quoteId: quote6.id, name: "エンジンオイル交換工賃", quantity: 1, unitPrice: 3000 },
   { quoteId: quote6.id, name: "エンジンオイル（1L）", quantity: 1, unitPrice: 1500 },
+]);
+
+await db.insert(assignees).values([
+  { name: "山田 太郎", sortOrder: 1 },
+  { name: "高橋 次郎", sortOrder: 2 },
+  { name: "小林 三郎", sortOrder: 3 },
 ]);
 
 await db.insert(shopSettings).values({

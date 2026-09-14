@@ -187,15 +187,19 @@ export const quoteInputSchema = z.object({
   caseId: z.uuid("対象の案件を選択してください"),
   title: optionalText(100),
   docType: z.enum(quoteDocTypeValues),
+  // 明細を追加するときの既定の税率。実際の課税は明細ごとの税率で計算する
   taxRate: z.coerce.number().min(0).max(100),
   note: optionalText(2000),
+  internalNote: optionalText(2000),
   sentOn: optionalDate,
 });
 
 export type QuoteInput = z.infer<typeof quoteInputSchema>;
 
+/** 編集時のみ発行日（作成日）を直せる。月末締めで前月日付の請求書を出すことがあるため */
 export const quoteUpdateInputSchema = quoteInputSchema.extend({
   id: z.uuid(),
+  createdOn: z.iso.date("日付の形式が正しくありません"),
 });
 
 export const quoteIdSchema = z.object({
@@ -208,6 +212,8 @@ export const quoteItemInputSchema = z.object({
   name: z.string().trim().min(1, "項目名を入力してください").max(100),
   quantity: z.coerce.number().int().min(1, "1以上の数値を入力してください"),
   unitPrice: z.coerce.number().int().min(0, "0以上の数値を入力してください"),
+  // 軽減税率（8%）の品目が混ざっても正しく計算できるよう、明細ごとに持つ
+  taxRate: z.coerce.number().min(0).max(100),
 });
 
 export type QuoteItemInput = z.infer<typeof quoteItemInputSchema>;
@@ -247,6 +253,22 @@ export const shopSettingsInputSchema = z.object({
 });
 
 export type ShopSettingsInput = z.infer<typeof shopSettingsInputSchema>;
+
+/** 担当者マスタの管理 */
+export const assigneeInputSchema = z.object({
+  name: z.string().trim().min(1, "担当者名を入力してください").max(30),
+  sortOrder: z.coerce.number().int().min(0).max(9999),
+});
+
+export type AssigneeInput = z.infer<typeof assigneeInputSchema>;
+
+export const assigneeUpdateInputSchema = assigneeInputSchema.extend({
+  id: z.uuid(),
+});
+
+export const assigneeIdSchema = z.object({
+  id: z.uuid(),
+});
 
 /** 郵便番号から住所を引くときの入力（ハイフンあり・なしどちらも受け付ける） */
 export const postalCodeSchema = z.object({

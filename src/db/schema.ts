@@ -106,10 +106,14 @@ export const quotes = pgTable("quotes", {
     .references(() => cases.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 100 }),
   docType: varchar("doc_type", { length: 10 }).notNull().default("見積書"),
+  // 明細を追加するときの既定値。実際の課税は明細ごとの税率で計算する
   taxRate: numeric("tax_rate", { precision: 5, scale: 2, mode: "number" })
     .notNull()
     .default(10),
+  // 帳票に印字される通信欄。お客様の目に触れる
   note: text("note"),
+  // 社内用のメモ。帳票には出さない（値引きの経緯など、客先に見せない内容を書く）
+  internalNote: text("internal_note"),
   createdOn: date("created_on").notNull().defaultNow(),
   sentOn: date("sent_on"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -132,6 +136,10 @@ export const quoteItems = pgTable("quote_items", {
   name: varchar("name", { length: 100 }).notNull(),
   quantity: integer("quantity").notNull().default(1),
   unitPrice: integer("unit_price").notNull().default(0),
+  // 明細ごとの消費税率。軽減税率（8%）と標準税率（10%）が1枚に混在しても正しく計算するため
+  taxRate: numeric("tax_rate", { precision: 5, scale: 2, mode: "number" })
+    .notNull()
+    .default(10),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -171,3 +179,25 @@ export const shopSettings = pgTable("shop_settings", {
 });
 
 export type ShopSettings = typeof shopSettings.$inferSelect;
+
+/**
+ * 担当者マスタ。案件の担当者を選ぶための選択肢。
+ *
+ * 案件側は名前を文字列で保持している（担当者が退職しても過去の案件の記録が変わらないため）。
+ * このテーブルは「今選べる人」の一覧を管理するもので、案件との外部キー制約は持たない。
+ */
+export const assignees = pgTable("assignees", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 30 }).notNull(),
+  // 一覧・選択肢の並び順。小さいほど先に出す
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date()),
+});
+
+export type Assignee = typeof assignees.$inferSelect;

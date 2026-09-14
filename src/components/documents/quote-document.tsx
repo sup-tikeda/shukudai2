@@ -113,6 +113,10 @@ export function QuoteDocument({ quote, items, summary, shop }: PrintData) {
             <th className="border border-black px-2 py-1.5 text-left font-bold">
               項目
             </th>
+            {/* 税率は品目ごとに記載する（軽減税率が混ざる場合の区分記載に対応するため） */}
+            <th className="w-14 border border-black px-2 py-1.5 text-center font-bold">
+              税率
+            </th>
             <th className="w-16 border border-black px-2 py-1.5 text-right font-bold">
               数量
             </th>
@@ -128,6 +132,9 @@ export function QuoteDocument({ quote, items, summary, shop }: PrintData) {
           {items.map((item) => (
             <tr key={item.id}>
               <td className="border border-black px-2 py-1.5">{item.name}</td>
+              <td className="border border-black px-2 py-1.5 text-center tabular-nums">
+                {item.taxRate}%
+              </td>
               <td className="border border-black px-2 py-1.5 text-right tabular-nums">
                 {item.quantity}
               </td>
@@ -143,6 +150,7 @@ export function QuoteDocument({ quote, items, summary, shop }: PrintData) {
           {Array.from({ length: Math.max(0, 8 - items.length) }).map((_, i) => (
             <tr key={`blank-${i}`}>
               <td className="border border-black px-2 py-1.5">&nbsp;</td>
+              <td className="border border-black px-2 py-1.5" />
               <td className="border border-black px-2 py-1.5" />
               <td className="border border-black px-2 py-1.5" />
               <td className="border border-black px-2 py-1.5" />
@@ -171,14 +179,17 @@ export function QuoteDocument({ quote, items, summary, shop }: PrintData) {
                 ¥{summary.subtotal.toLocaleString()}
               </td>
             </tr>
-            <tr>
-              <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-normal">
-                消費税（{quote.taxRate}%）
-              </th>
-              <td className="border border-black px-2 py-1.5 text-right tabular-nums">
-                ¥{summary.tax.toLocaleString()}
-              </td>
-            </tr>
+            {/* 税率ごとに1行ずつ出す（税率別の内訳を記載する必要があるため） */}
+            {summary.taxes.map((row) => (
+              <tr key={row.rate}>
+                <th className="border border-black bg-neutral-100 px-2 py-1.5 text-left font-normal">
+                  消費税（{row.rate}%対象 ¥{row.base.toLocaleString()}）
+                </th>
+                <td className="border border-black px-2 py-1.5 text-right tabular-nums">
+                  ¥{row.tax.toLocaleString()}
+                </td>
+              </tr>
+            ))}
             <tr>
               <th className="border border-black bg-neutral-100 px-2 py-2 text-left font-bold">
                 合計（税込）

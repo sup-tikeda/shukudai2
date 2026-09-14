@@ -6,8 +6,12 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import appCss from "~/styles/app.css?url";
+import { getSessionUserOrNull } from "~/server/session";
 
 export const Route = createRootRoute({
+  // 上部ナビに「設定」を出すかどうかを全画面で判定できるよう、ここでログイン状態を読む。
+  // 未ログインでもリダイレクトしない（ログイン画面・LPもこの loader を通るため）。
+  loader: () => getSessionUserOrNull(),
   head: () => ({
     meta: [
       { charSet: "utf-8" },

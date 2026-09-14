@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useLoaderData, useRouter } from "@tanstack/react-router";
 import { tv } from "tailwind-variants";
 import { button } from "~/components/ui/form";
 import { signOut } from "~/lib/auth-client";
@@ -25,6 +25,9 @@ const navLink = tv({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
+  // ルート直下の loader が返すログイン情報。admin のときだけ「設定」を出す
+  const sessionUser = useLoaderData({ from: "__root__" });
+  const isAdmin = sessionUser?.role === "admin";
 
   async function handleSignOut() {
     await signOut();
@@ -52,6 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
 
+          {/* 左＝毎日使う業務。顧客→車両→案件→見積請求と、実際の仕事の順に並べている */}
           <nav className="flex flex-1 flex-wrap items-center gap-1">
             {navLinks.map((item) => (
               <Link
@@ -65,13 +69,25 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className={button({ variant: "ghost", size: "sm" })}
-          >
-            ログアウト
-          </button>
+          {/* 右＝たまにしか使わない設定と、自分自身の操作。縦線で業務メニューと分ける */}
+          <div className="flex items-center gap-1 border-l border-line pl-3">
+            {isAdmin ? (
+              <Link
+                to="/master"
+                className={navLink({ active: false })}
+                activeProps={{ className: navLink({ active: true }) }}
+              >
+                設定
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className={button({ variant: "ghost", size: "sm" })}
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
       </header>
 

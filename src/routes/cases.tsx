@@ -26,6 +26,7 @@ import {
   listCases,
   updateCase,
 } from "~/server/cases";
+import { listAssignees } from "~/server/assignees";
 import { listVehicleOptions } from "~/server/vehicles";
 
 export const Route = createFileRoute("/cases")({
@@ -36,6 +37,7 @@ export const Route = createFileRoute("/cases")({
   loader: async () => ({
     cases: await listCases(),
     vehicleOptions: await listVehicleOptions(),
+    assignees: await listAssignees(),
   }),
   component: CasesPage,
 });
@@ -43,10 +45,8 @@ export const Route = createFileRoute("/cases")({
 type CaseRow = Awaited<ReturnType<typeof listCases>>[number];
 type CaseDetail = Awaited<ReturnType<typeof getCase>>;
 
-const assigneeOptions = ["勝又", "佐藤", "鈴木", "その他"];
-
 function CasesPage() {
-  const { cases, vehicleOptions } = Route.useLoaderData();
+  const { cases, vehicleOptions, assignees } = Route.useLoaderData();
   const { new: presetVehicleId } = Route.useSearch();
   const router = useRouter();
 
@@ -321,7 +321,11 @@ function CasesPage() {
             <SelectField
               name="assignee"
               label="担当者"
-              options={assigneeOptions.map((v) => ({ value: v, label: v }))}
+              // 選択肢は担当者マスタ（設定画面）で管理する
+              options={[
+                { value: "", label: "未定" },
+                ...assignees.map((a) => ({ value: a.name, label: a.name })),
+              ]}
               defaultValue={
                 modal?.mode === "edit" ? (modal.item.assignee ?? "") : ""
               }

@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AppShell, StatTile } from "~/components/ui/layout";
-import { getDashboardStats } from "~/server/dashboard";
+import { button } from "~/components/ui/form";
+import {
+  AppShell,
+  Badge,
+  Card,
+  remainingDays,
+  Row,
+  RowList,
+  StatTile,
+} from "~/components/ui/layout";
+import { getDashboardStats, listInspectionAlerts } from "~/server/dashboard";
 import { getCurrentUser } from "~/server/session";
 
 export const Route = createFileRoute("/")({
@@ -8,6 +17,7 @@ export const Route = createFileRoute("/")({
   loader: async () => ({
     me: await getCurrentUser(),
     stats: await getDashboardStats(),
+    alerts: await listInspectionAlerts(),
   }),
   component: DashboardPage,
 });
@@ -40,7 +50,7 @@ const menuItems = [
 ] as const;
 
 function DashboardPage() {
-  const { me, stats } = Route.useLoaderData();
+  const { me, stats, alerts } = Route.useLoaderData();
 
   return (
     <AppShell>
@@ -107,17 +117,49 @@ function DashboardPage() {
         ))}
       </div>
 
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5 text-sm">
-        {me.role === "admin" ? (
-          <Link
-            to="/master"
-            className="text-ink-muted underline underline-offset-4 transition-colors hover:text-accent"
-          >
-            マスタ管理（社員・会社設定）
-          </Link>
-        ) : (
-          <span />
-        )}
+      {/* 車検切れは店舗側から案内しないと気づかれないため、開いてすぐ目に入る位置に置く */}
+      {alerts.length > 0 ? (
+        <div className="mt-8">
+          <Card title="車検期限が近い車両" count={`${alerts.length} 台`}>
+            <RowList>
+              {alerts.map((alert) => {
+                const days = remainingDays(alert.inspectionExpiresOn);
+                const expired = days === 0;
+                return (
+                  <Row
+                    key={alert.id}
+                    actions={
+                      <Link
+                        to="/vehicles/$id"
+                        params={{ id: alert.id }}
+                        className={button({ variant: "outline", size: "sm" })}
+                      >
+                        車両を見る
+                      </Link>
+                    }
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={expired ? "accent" : "neutral"}>
+                        {expired ? "期限切れ" : `あと${days}日`}
+                      </Badge>
+                      <p className="font-medium break-words">
+                        {alert.modelName}
+                        {alert.vehicleNumber ? `（${alert.vehicleNumber}）` : ""}
+                      </p>
+                    </div>
+                    <p className="mt-0.5 text-sm text-ink-muted">
+                      {alert.customerName} ／ 車検期限{" "}
+                      {alert.inspectionExpiresOn}
+                    </p>
+                  </Row>
+                );
+              })}
+            </RowList>
+          </Card>
+        </div>
+      ) : null}
+
+      <div className="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-line pt-5 text-sm">
         <span className="flex flex-wrap gap-4">
           {/*
             店舗の紹介ページ（お客様向け）。管理画面とは配色も役割も違うため、

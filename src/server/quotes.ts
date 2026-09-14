@@ -9,6 +9,7 @@ import {
   vehicles,
 } from "~/db/schema";
 import { db } from "~/lib/db";
+import { summarizeItems } from "~/lib/quote-summary";
 import { requireSession } from "~/server/authGuard";
 import {
   quoteIdSchema,
@@ -18,20 +19,6 @@ import {
   quoteItemUpdateInputSchema,
   quoteUpdateInputSchema,
 } from "~/lib/validation";
-
-/** 明細項目から合計を計算する（税抜合計・消費税額・税込合計・数量）。保存はせず都度計算する。 */
-function summarizeItems(
-  items: { quantity: number; unitPrice: number }[],
-  taxRate: number,
-) {
-  const quantity = items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.quantity * item.unitPrice,
-    0,
-  );
-  const tax = Math.round(subtotal * (taxRate / 100));
-  return { quantity, subtotal, tax, total: subtotal + tax };
-}
 
 /** 見積・請求の一覧（作成日順）。案件名・顧客名・車両名と集計金額をあわせて返す。 */
 export const listQuotes = createServerFn({ method: "GET" }).handler(async () => {
@@ -62,15 +49,13 @@ export const listQuotes = createServerFn({ method: "GET" }).handler(async () => 
       quoteId: quoteItems.quoteId,
       quantity: quoteItems.quantity,
       unitPrice: quoteItems.unitPrice,
+      taxRate: quoteItems.taxRate,
     })
     .from(quoteItems);
 
   return rows.map((row) => ({
     ...row,
-    ...summarizeItems(
-      items.filter((item) => item.quoteId === row.id),
-      row.taxRate,
-    ),
+    ...summarizeItems(items.filter((item) => item.quoteId === row.id)),
   }));
 });
 
@@ -94,6 +79,7 @@ export const getQuote = createServerFn({ method: "GET" })
         docType: quotes.docType,
         taxRate: quotes.taxRate,
         note: quotes.note,
+        internalNote: quotes.internalNote,
         createdOn: quotes.createdOn,
         sentOn: quotes.sentOn,
       })
@@ -112,7 +98,7 @@ export const getQuote = createServerFn({ method: "GET" })
       .where(eq(quoteItems.quoteId, data.id))
       .orderBy(asc(quoteItems.createdAt));
 
-    return { ...quote, items, summary: summarizeItems(items, quote.taxRate) };
+    return { ...quote, items, summary: summarizeItems(items) };
   });
 
 /**
@@ -165,7 +151,7 @@ export const getQuoteForPrint = createServerFn({ method: "GET" })
     return {
       quote,
       items,
-      summary: summarizeItems(items, quote.taxRate),
+      summary: summarizeItems(items),
       shop: settings ?? null,
     };
   });
@@ -191,6 +177,62 @@ export const updateQuote = createServerFn({ method: "POST" })
 
     const { id, ...values } = data;
     await db.update(quotes).set(values).where(eq(quotes.id, id));
+  });
+
+/**
+ * 見積書をもとに請求書を作る（明細ごと複製する）。
+ *
+ * 元の見積書はそのまま残す。作業の承諾を得た証跡として見積書を保管しておく必要があり、
+ * 種別を書き換えてしまうと「いくらで見積もったか」が残らなくなるため。
+ * 発行日は元の見積書の日付ではなく、請求書を作った当日にする。
+ */
+export const convertQuoteToInvoice = createServerFn({ method: "POST" })
+  .validator(quoteIdSchema)
+  .handler(async ({ data }) => {
+    await requireSession();
+
+    const [source] = await db
+      .select()
+      .from(quotes)
+      .where(eq(quotes.id, data.id));
+    if (!source) {
+      throw new Error("見積・請求が見つかりません。");
+    }
+    if (source.docType === "請求書") {
+      throw new Error("すでに請求書です。見積書からのみ変換できます。");
+    }
+
+    const [created] = await db
+      .insert(quotes)
+      .values({
+        caseId: source.caseId,
+        title: source.title,
+        docType: "請求書",
+        taxRate: source.taxRate,
+        note: source.note,
+        internalNote: source.internalNote,
+      })
+      .returning({ id: quotes.id });
+
+    const items = await db
+      .select()
+      .from(quoteItems)
+      .where(eq(quoteItems.quoteId, source.id))
+      .orderBy(asc(quoteItems.createdAt));
+
+    if (items.length > 0) {
+      await db.insert(quoteItems).values(
+        items.map((item) => ({
+          quoteId: created.id,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          taxRate: item.taxRate,
+        })),
+      );
+    }
+
+    return { id: created.id };
   });
 
 /** 見積・請求を削除する（明細項目も連鎖して削除される） */

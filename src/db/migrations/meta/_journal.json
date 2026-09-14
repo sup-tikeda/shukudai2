@@ -50,6 +50,13 @@
       "when": 1789356740067,
       "tag": "0006_green_madripoor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789361605929,
+      "tag": "0007_kind_iceman",
+      "breakpoints": true
     }
   ]
 }

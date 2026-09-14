@@ -3,6 +3,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, TextField } from "~/components/ui/form";
 import {
   AppShell,
+  Badge,
   Card,
   EmptyState,
   ListToolbar,
@@ -239,11 +240,22 @@ function CustomersPage() {
                   </>
                 }
               >
-                <p className="font-medium break-words">{customer.name}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium break-words">{customer.name}</p>
+                  {/* 保有台数。一覧のまま顧客の規模が掴めるようにする */}
+                  <Badge tone={customer.vehicleCount > 0 ? "info" : "neutral"}>
+                    {customer.vehicleCount} 台
+                  </Badge>
+                </div>
                 <p className="mt-0.5 text-sm text-ink-muted break-words">
                   {[customer.phone, customer.mobilePhone, customer.email]
                     .filter(Boolean)
                     .join(" ／ ") || "連絡先未登録"}
+                </p>
+                <p className="mt-0.5 text-sm text-ink-faint break-words">
+                  {[customer.address, customer.addressLine2, customer.building]
+                    .filter(Boolean)
+                    .join(" ") || "住所未登録"}
                 </p>
               </Row>
             ))}

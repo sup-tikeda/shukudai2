@@ -1,8 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { count, eq, sql } from "drizzle-orm";
+import { and, asc, count, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { cases, customers, quoteItems, quotes, vehicles } from "~/db/schema";
 import { db } from "~/lib/db";
 import { requireSession } from "~/server/authGuard";
+
+/** 車検期限を「何日先まで」知らせるか。案内を出してから入庫までの準備期間として2か月みておく */
+const INSPECTION_ALERT_DAYS = 60;
 
 /** ダッシュボードに出す件数と金額。画面を開いた時点の状況を一目で掴むためのもの。 */
 export const getDashboardStats = createServerFn({ method: "GET" }).handler(
@@ -34,5 +37,39 @@ export const getDashboardStats = createServerFn({ method: "GET" }).handler(
       openCases: openCaseCount.value,
       invoiceTotal: invoiceTotal.value,
     };
+  },
+);
+
+/**
+ * 車検期限が近い車両（期限切れを含む）。
+ *
+ * 車検は切らしてしまうと公道を走れなくなるため、こちらから入庫を案内できるよう
+ * ダッシュボードに出す。期限が過ぎたものも、案内漏れに気づけるよう残して表示する。
+ */
+export const listInspectionAlerts = createServerFn({ method: "GET" }).handler(
+  async () => {
+    await requireSession();
+
+    // 期限の判定はDB側の現在日付で行う（サーバーとDBで時差が生じないようにするため）
+    const limit = sql`current_date + ${INSPECTION_ALERT_DAYS}`;
+
+    return db
+      .select({
+        id: vehicles.id,
+        modelName: vehicles.modelName,
+        vehicleNumber: vehicles.vehicleNumber,
+        inspectionExpiresOn: vehicles.inspectionExpiresOn,
+        customerId: customers.id,
+        customerName: customers.name,
+      })
+      .from(vehicles)
+      .innerJoin(customers, eq(vehicles.customerId, customers.id))
+      .where(
+        and(
+          isNotNull(vehicles.inspectionExpiresOn),
+          lte(vehicles.inspectionExpiresOn, limit),
+        ),
+      )
+      .orderBy(asc(vehicles.inspectionExpiresOn));
   },
 );

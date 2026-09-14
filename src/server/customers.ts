@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { asc, eq } from "drizzle-orm";
-import { customers } from "~/db/schema";
+import { asc, count, eq } from "drizzle-orm";
+import { customers, vehicles } from "~/db/schema";
 import { db } from "~/lib/db";
 import { requireSession } from "~/server/authGuard";
 import {
@@ -9,12 +9,36 @@ import {
   customerUpdateInputSchema,
 } from "~/lib/validation";
 
-/** 顧客の一覧（名前順）。受付業務で誰でも使うため、ログインしていれば閲覧・編集できる。 */
+/**
+ * 顧客の一覧（名前順）。受付業務で誰でも使うため、ログインしていれば閲覧・編集できる。
+ * 一覧のまま顧客の規模が掴めるよう、保有台数もあわせて数える。
+ */
 export const listCustomers = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireSession();
 
-    return db.select().from(customers).orderBy(asc(customers.name));
+    return db
+      .select({
+        id: customers.id,
+        name: customers.name,
+        contactName: customers.contactName,
+        postalCode: customers.postalCode,
+        address: customers.address,
+        addressLine2: customers.addressLine2,
+        building: customers.building,
+        phone: customers.phone,
+        mobilePhone: customers.mobilePhone,
+        email: customers.email,
+        licenseNumber: customers.licenseNumber,
+        note: customers.note,
+        createdAt: customers.createdAt,
+        // 車両が1台も無い顧客も一覧に出すため leftJoin で数える
+        vehicleCount: count(vehicles.id),
+      })
+      .from(customers)
+      .leftJoin(vehicles, eq(vehicles.customerId, customers.id))
+      .groupBy(customers.id)
+      .orderBy(asc(customers.name));
   },
 );
 
