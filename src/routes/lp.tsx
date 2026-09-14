@@ -193,7 +193,7 @@ function Hero() {
             創業1998年 ／ 整備士在籍4名
           </p>
 
-          <h1 className="mt-6 text-4xl leading-[1.15] font-black tracking-tight sm:text-6xl">
+          <h1 className="mt-6 text-5xl leading-[1.08] font-black tracking-tight sm:text-7xl">
             そのバイク、
             <br />
             <span className="text-accent">まだ終わりじゃない。</span>
@@ -269,22 +269,25 @@ function Hero() {
 
 function Stats() {
   return (
-    <section className="border-b border-line bg-surface/40">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px bg-line/60 sm:grid-cols-4">
+    // ページ全体が暗いなかで、この帯だけオレンジで塗って区切りにする
+    <section className="bg-accent text-accent-ink">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 divide-accent-ink/15 sm:grid-cols-4 sm:divide-x">
         {[
           ["27", "年", "地元で営業"],
           ["12,000", "台", "累計整備実績"],
           ["4", "名", "国家資格整備士"],
           ["98", "%", "見積もり通りの請求"],
         ].map(([value, unit, label]) => (
-          <div key={label} className="bg-shell px-5 py-8 text-center">
-            <p className="text-3xl font-black tracking-tight text-accent tabular-nums sm:text-4xl">
+          <div key={label} className="px-5 py-9 text-center">
+            <p className="text-4xl font-black tracking-tight tabular-nums sm:text-5xl">
               {value}
-              <span className="ml-0.5 text-base font-bold text-ink-muted">
+              <span className="ml-0.5 text-base font-bold opacity-70">
                 {unit}
               </span>
             </p>
-            <p className="mt-1.5 text-xs text-ink-faint sm:text-sm">{label}</p>
+            <p className="mt-2 text-xs font-bold opacity-80 sm:text-sm">
+              {label}
+            </p>
           </div>
         ))}
       </div>
@@ -304,23 +307,31 @@ function Services() {
         {services.map((service) => (
           <article
             key={service.no}
-            className="group relative bg-surface p-7 transition-colors hover:bg-surface-raised"
+            className="group relative overflow-hidden bg-surface p-8 transition-colors hover:bg-surface-raised"
           >
+            {/* 背景の大きな連番。目印として薄く敷く */}
+            <span
+              aria-hidden
+              className="absolute -top-4 right-2 text-8xl font-black text-surface-raised tabular-nums transition-colors group-hover:text-accent/15"
+            >
+              {service.no}
+            </span>
             {/* 左端のオレンジの帯。ホバーで伸びる */}
             <span
               aria-hidden
-              className="absolute top-7 bottom-7 left-0 w-0.5 bg-accent opacity-0 transition-opacity group-hover:opacity-100"
+              className="absolute inset-y-0 left-0 w-1 origin-top scale-y-0 bg-accent transition-transform group-hover:scale-y-100"
             />
-            <p className="text-xs font-black tracking-[0.2em] text-ink-faint">
-              {service.no}
-            </p>
-            <h3 className="mt-3 text-xl font-bold">{service.title}</h3>
-            <p className="mt-2.5 text-sm leading-relaxed text-ink-muted">
-              {service.body}
-            </p>
-            <p className="mt-5 text-sm font-bold text-accent tabular-nums">
-              {service.price}
-            </p>
+            <div className="relative">
+              <h3 className="text-2xl font-black tracking-tight">
+                {service.title}
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-ink-muted">
+                {service.body}
+              </p>
+              <p className="mt-6 border-t border-line pt-4 text-lg font-black text-accent tabular-nums">
+                {service.price}
+              </p>
+            </div>
           </article>
         ))}
       </div>
@@ -335,6 +346,7 @@ function Flow() {
   return (
     <Section
       id="flow"
+      tone="raised"
       eyebrow="Flow"
       title="ご依頼の流れ"
       lead="お預かりしてから納車まで、金額とやることを毎回確認しながら進めます。"
@@ -402,6 +414,7 @@ function Access() {
   return (
     <Section
       id="access"
+      tone="raised"
       eyebrow="Access"
       title="店舗情報"
       lead="都営三田線 西巣鴨駅から徒歩5分。国道沿いのオレンジの看板が目印です。"
@@ -451,34 +464,36 @@ function Access() {
 
 function ClosingCta() {
   return (
-    <section className="relative overflow-hidden border-t border-line">
+    // ページの締めくくり。ここだけ全面オレンジにして、最後にもう一度目を引く
+    <section className="relative overflow-hidden bg-accent text-accent-ink">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.08]"
+        className="pointer-events-none absolute inset-0 opacity-[0.12]"
         style={{
           backgroundImage:
-            "repeating-linear-gradient(115deg, var(--color-accent) 0 2px, transparent 2px 22px)",
+            "repeating-linear-gradient(115deg, var(--color-accent-ink) 0 2px, transparent 2px 22px)",
         }}
       />
-      <div className="relative mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
-        <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
+      <div className="relative mx-auto max-w-6xl px-4 py-24 text-center sm:px-6">
+        <h2 className="text-4xl leading-[1.15] font-black tracking-tight sm:text-5xl">
           迷っている時間も、
-          <span className="text-accent">整備の時間</span>にしませんか。
+          <br className="sm:hidden" />
+          整備の時間にしませんか。
         </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-ink-muted sm:text-base">
+        <p className="mx-auto mt-5 max-w-2xl leading-relaxed opacity-90">
           見積もりは無料です。直すべきか、乗り換えるべきか。判断に必要な材料をそろえてお渡しします。
         </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <div className="mt-9 flex flex-wrap justify-center gap-3">
           <Link
             to="/contact"
-            className="inline-flex items-center gap-2 rounded-md bg-accent px-7 py-3.5 text-base font-bold text-accent-ink transition-colors hover:bg-accent-strong"
+            className="inline-flex items-center gap-2 rounded-md bg-shell px-8 py-4 text-base font-black text-ink transition-transform hover:-translate-y-0.5"
           >
             お問い合わせフォームへ
             <span aria-hidden>→</span>
           </Link>
           <a
             href="tel:0300000000"
-            className="inline-flex items-center rounded-md border border-line px-7 py-3.5 text-base font-bold transition-colors hover:border-accent hover:text-accent"
+            className="inline-flex items-center rounded-md border-2 border-accent-ink/40 px-8 py-4 text-base font-black transition-colors hover:bg-accent-ink/10"
           >
             03-0000-0000 に電話する
           </a>
@@ -508,33 +523,44 @@ function SiteFooter() {
   );
 }
 
-/** 各セクションの共通枠（見出しの体裁をそろえるため） */
+/**
+ * 各セクションの共通枠（見出しの体裁をそろえるため）。
+ * tone を交互に変えて、縦に長いページでも区切りが分かるようにしている。
+ */
 function Section({
   id,
   eyebrow,
   title,
   lead,
+  tone = "base",
   children,
 }: {
   id: string;
   eyebrow: string;
   title: string;
   lead: string;
+  tone?: "base" | "raised";
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-16 border-b border-line">
-      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <p className="text-xs font-black tracking-[0.3em] text-accent uppercase">
-          {eyebrow}
-        </p>
-        <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+    <section
+      id={id}
+      className={`scroll-mt-16 border-b border-line ${
+        tone === "raised" ? "bg-surface/40" : ""
+      }`}
+    >
+      <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
+        <div className="flex items-center gap-3">
+          <span aria-hidden className="h-px w-10 bg-accent" />
+          <p className="text-xs font-black tracking-[0.3em] text-accent uppercase">
+            {eyebrow}
+          </p>
+        </div>
+        <h2 className="mt-4 text-4xl leading-[1.1] font-black tracking-tight sm:text-5xl">
           {title}
         </h2>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-muted sm:text-base">
-          {lead}
-        </p>
-        <div className="mt-10">{children}</div>
+        <p className="mt-4 max-w-2xl leading-relaxed text-ink-muted">{lead}</p>
+        <div className="mt-12">{children}</div>
       </div>
     </section>
   );

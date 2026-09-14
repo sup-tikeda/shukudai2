@@ -44,14 +44,19 @@ function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="mb-8">
-        <p className="text-xs font-medium tracking-widest text-accent uppercase">
-          Dashboard
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">
-          バイクショップ店舗管理
-        </h1>
-        <p className="mt-1 text-sm text-ink-muted">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
+        <div className="flex gap-3.5">
+          <span aria-hidden className="mt-1 w-1 shrink-0 rounded-full bg-accent" />
+          <div>
+            <p className="text-xs font-black tracking-[0.25em] text-accent uppercase">
+              Dashboard
+            </p>
+            <h1 className="mt-1 text-4xl font-black tracking-tight">
+              バイクショップ店舗管理
+            </h1>
+          </div>
+        </div>
+        <p className="text-sm text-ink-muted">
           {me.name}（{me.username}）としてログイン中
         </p>
       </div>
@@ -60,27 +65,44 @@ function DashboardPage() {
         <StatTile label="顧客" value={stats.customers} unit="名" />
         <StatTile label="車両" value={stats.vehicles} unit="台" />
         <StatTile label="対応中の案件" value={stats.openCases} unit="件" />
+        {/* 4つの中でいちばん見てほしい数字なので、ここだけ塗りつぶす */}
         <StatTile
           label="請求金額（税込）"
           value={`¥${stats.invoiceTotal.toLocaleString()}`}
+          accent
         />
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {menuItems.map((item) => (
+        {menuItems.map((item, index) => (
           <Link
             key={item.to}
             to={item.to}
-            className="group rounded-xl border border-line bg-surface p-5 transition-colors hover:border-accent/50 hover:bg-surface-raised"
+            className="group relative overflow-hidden rounded-xl border border-line bg-surface p-6 shadow-sm shadow-ink/5 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md hover:shadow-ink/10"
           >
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-base font-bold">{item.title}</h2>
-              <span className="text-ink-faint transition-colors group-hover:text-accent">
-                →
-              </span>
+            {/* 背景の大きな連番。情報ではなく目印なので、ごく薄く敷く */}
+            <span
+              aria-hidden
+              className="absolute -top-3 right-3 text-7xl font-black text-line/60 tabular-nums transition-colors group-hover:text-accent/15"
+            >
+              {index + 1}
+            </span>
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-black tracking-tight">
+                  {item.title}
+                </h2>
+                <span className="text-ink-faint transition-all group-hover:translate-x-1 group-hover:text-accent">
+                  →
+                </span>
+              </div>
+              <p className="mt-1.5 text-sm font-medium text-ink-muted">
+                {item.description}
+              </p>
+              <p className="mt-4 border-t border-line pt-3 text-xs text-ink-faint">
+                {item.hint}
+              </p>
             </div>
-            <p className="mt-1 text-sm text-ink-muted">{item.description}</p>
-            <p className="mt-3 text-xs text-ink-faint">{item.hint}</p>
           </Link>
         ))}
       </div>

@@ -13,10 +13,11 @@ const navLinks = [
 ] as const;
 
 const navLink = tv({
-  base: "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+  // 選択中は塗りつぶし。薄い色違いではなく面で示して、現在地をひと目で分かるようにする
+  base: "rounded-md px-3.5 py-1.5 text-sm font-bold transition-colors",
   variants: {
     active: {
-      true: "bg-accent/15 text-accent",
+      true: "bg-accent text-accent-ink shadow-sm shadow-accent/30",
       false: "text-ink-muted hover:bg-surface-raised hover:text-ink",
     },
   },
@@ -32,13 +33,22 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-shell text-ink">
-      <header className="sticky top-0 z-10 border-b border-line bg-shell/90 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b-2 border-line bg-surface/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-          <Link to="/" className="flex items-center gap-2">
-            {/* ブランド表示。左のオレンジの帯が全画面共通の目印になる */}
-            <span className="h-5 w-1.5 rounded-full bg-accent" />
-            <span className="text-sm font-bold tracking-widest text-ink uppercase">
-              Bike Shop
+          <Link to="/" className="flex items-center gap-2.5">
+            {/* ブランド表示。六角ボルトを模したオレンジの印が全画面共通の目印になる */}
+            <span
+              aria-hidden
+              className="flex h-7 w-7 items-center justify-center bg-accent text-sm font-black text-accent-ink"
+              style={{
+                clipPath:
+                  "polygon(25% 2%, 75% 2%, 100% 50%, 75% 98%, 25% 98%, 0% 50%)",
+              }}
+            >
+              I
+            </span>
+            <span className="text-sm font-black tracking-widest text-ink uppercase">
+              Ikeda
             </span>
           </Link>
 
@@ -85,22 +95,31 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div className="min-w-0">
-        {backTo ? (
-          <Link
-            to={backTo}
-            className="text-xs font-medium tracking-wide text-ink-faint uppercase transition-colors hover:text-accent"
-          >
-            ← {backLabel}
-          </Link>
-        ) : null}
-        <h1 className="mt-1 text-2xl font-bold tracking-tight break-words">
-          {title}
-        </h1>
-        {subtitle ? (
-          <p className="mt-1 text-sm text-ink-muted break-words">{subtitle}</p>
-        ) : null}
+    // 見出しは画面の起点。左のオレンジの縦棒で「ここから始まる」ことを示す
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
+      <div className="flex min-w-0 gap-3.5">
+        <span
+          aria-hidden
+          className="mt-1 w-1 shrink-0 rounded-full bg-accent"
+        />
+        <div className="min-w-0">
+          {backTo ? (
+            <Link
+              to={backTo}
+              className="text-xs font-bold tracking-wide text-ink-faint uppercase transition-colors hover:text-accent"
+            >
+              ← {backLabel}
+            </Link>
+          ) : null}
+          <h1 className="mt-0.5 text-3xl font-black tracking-tight break-words">
+            {title}
+          </h1>
+          {subtitle ? (
+            <p className="mt-1.5 text-sm text-ink-muted break-words">
+              {subtitle}
+            </p>
+          ) : null}
+        </div>
       </div>
       {actions ? <div className="flex gap-2">{actions}</div> : null}
     </div>
@@ -120,13 +139,14 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-line bg-surface">
+    // 白いカードを地の色から浮かせ、見出し帯だけ薄く敷いて中身と区切る
+    <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm shadow-ink/5">
       {title ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3.5">
-          <h2 className="flex items-baseline gap-2 text-sm font-bold tracking-wide">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-raised px-5 py-3">
+          <h2 className="flex items-baseline gap-2.5 text-sm font-black tracking-wide">
             {title}
             {count !== undefined ? (
-              <span className="text-xs font-normal text-ink-faint">
+              <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-bold text-ink-faint ring-1 ring-line ring-inset">
                 {count}
               </span>
             ) : null}
@@ -148,7 +168,12 @@ export function Row({
   actions?: ReactNode;
 }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 transition-colors last:border-b-0 hover:bg-surface-raised">
+    // ホバー時は左端にオレンジの線を出し、いまどの行を見ているかを分かりやすくする
+    <li className="group relative flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 transition-colors last:border-b-0 hover:bg-surface-raised">
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-1 scale-y-0 bg-accent transition-transform group-hover:scale-y-100"
+      />
       <div className="min-w-0 flex-1">{children}</div>
       {actions ? <div className="flex shrink-0 gap-2">{actions}</div> : null}
     </li>
@@ -316,25 +341,48 @@ export function DetailList({ children }: { children: ReactNode }) {
   );
 }
 
-/** ダッシュボードの数値タイル。 */
+/**
+ * ダッシュボードの数値タイル。
+ * accent を付けたものだけオレンジで塗り、いちばん見てほしい数字を1つに絞る。
+ */
 export function StatTile({
   label,
   value,
   unit,
+  accent,
 }: {
   label: string;
   value: ReactNode;
   unit?: string;
+  accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3">
-      <p className="text-xs font-medium tracking-wide text-ink-faint uppercase">
+    <div
+      className={
+        accent
+          ? "rounded-xl bg-accent px-4 py-4 shadow-sm shadow-accent/30"
+          : "rounded-xl border border-line bg-surface px-4 py-4 shadow-sm shadow-ink/5"
+      }
+    >
+      <p
+        className={`text-xs font-bold tracking-wide uppercase ${
+          accent ? "text-accent-ink/80" : "text-ink-faint"
+        }`}
+      >
         {label}
       </p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">
+      <p
+        className={`mt-1.5 text-3xl font-black tracking-tight tabular-nums ${
+          accent ? "text-accent-ink" : ""
+        }`}
+      >
         {value}
         {unit ? (
-          <span className="ml-1 text-sm font-normal text-ink-muted">
+          <span
+            className={`ml-1 text-sm font-bold ${
+              accent ? "text-accent-ink/80" : "text-ink-muted"
+            }`}
+          >
             {unit}
           </span>
         ) : null}

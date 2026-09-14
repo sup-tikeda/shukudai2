@@ -9,16 +9,16 @@
  * 店舗紹介ページ（LP）だけは後述の .theme-dark で暗い配色に切り替えている。
  */
 @theme {
-  /* 背景（奥 → 手前） */
-  --color-shell: oklch(0.975 0.003 250);
+  /* 背景（奥 → 手前）。白いカードが浮いて見えるよう、地の色は少し沈ませている */
+  --color-shell: oklch(0.952 0.004 250);
   --color-surface: oklch(1 0 0);
-  --color-surface-raised: oklch(0.962 0.004 250);
-  --color-line: oklch(0.905 0.006 250);
+  --color-surface-raised: oklch(0.965 0.005 250);
+  --color-line: oklch(0.885 0.007 250);
 
-  /* 文字（濃い → 薄い） */
-  --color-ink: oklch(0.26 0.012 260);
-  --color-ink-muted: oklch(0.48 0.012 260);
-  --color-ink-faint: oklch(0.63 0.012 260);
+  /* 文字（濃い → 薄い）。見出しとの差を出すため、本文は思い切って濃くしている */
+  --color-ink: oklch(0.21 0.014 260);
+  --color-ink-muted: oklch(0.46 0.012 260);
+  --color-ink-faint: oklch(0.62 0.012 260);
 
   /* アクセント（工具・標識のオレンジ）。白地でも読めるよう暗めに寄せている */
   --color-accent: oklch(0.58 0.17 45);

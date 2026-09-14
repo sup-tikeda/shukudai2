@@ -4,14 +4,15 @@ import { Field } from "@ark-ui/react/field";
 import { tv } from "tailwind-variants";
 
 export const button = tv({
-  base: "inline-flex items-center justify-center gap-1.5 rounded-md font-medium tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40",
+  base: "inline-flex items-center justify-center gap-1.5 rounded-md font-bold tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40",
   variants: {
     variant: {
       // 主操作。工具のオレンジで、画面内で1番目立たせたいものだけに使う
-      primary: "bg-accent text-accent-ink hover:bg-accent-strong",
+      primary:
+        "bg-accent text-accent-ink shadow-sm shadow-accent/30 hover:bg-accent-strong",
       // 併置する副操作
       outline:
-        "border border-line bg-surface-raised text-ink hover:border-ink-faint hover:bg-line",
+        "border border-line bg-surface text-ink hover:border-accent hover:text-accent",
       // 一覧の行内など、枠線を出すとうるさい場所
       ghost: "text-ink-muted hover:bg-surface-raised hover:text-ink",
       // 削除など戻せない操作
