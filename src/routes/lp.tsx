@@ -92,7 +92,8 @@ const voices = [
 
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-shell text-ink">
+    // 管理画面は明るい配色だが、このページだけは theme-dark で暗い配色に切り替える
+    <div className="theme-dark min-h-screen bg-shell text-ink">
       <SiteHeader />
       <main>
         <Hero />

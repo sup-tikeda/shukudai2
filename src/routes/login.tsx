@@ -82,7 +82,7 @@ function LoginPage() {
             error={errors.password}
           />
           {formError ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {formError}
             </p>
           ) : null}

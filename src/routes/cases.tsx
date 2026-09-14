@@ -203,7 +203,7 @@ function CasesPage() {
       ) : null}
 
       {listError ? (
-        <p className="mb-4 text-sm text-red-400" role="alert">
+        <p className="mb-4 text-sm text-danger" role="alert">
           {listError}
         </p>
       ) : null}
@@ -370,7 +370,7 @@ function CasesPage() {
           />
 
           {formError ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {formError}
             </p>
           ) : null}
@@ -389,7 +389,7 @@ function RemainingDays({ endOn }: { endOn: string }) {
   const days = remainingDays(endOn);
   if (days === null) return null;
   const tone =
-    days === 0 ? "text-red-400" : days <= 3 ? "text-accent" : "text-ink-faint";
+    days === 0 ? "text-danger" : days <= 3 ? "text-accent" : "text-ink-faint";
   return (
     <span className={`ml-2 ${tone}`}>
       {days === 0 ? "（期限超過）" : `（残り${days}日）`}

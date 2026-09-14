@@ -234,7 +234,7 @@ function QuotesPage() {
           <TextField name="note" label="通信欄" multiline rows={3} />
 
           {formError ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {formError}
             </p>
           ) : null}

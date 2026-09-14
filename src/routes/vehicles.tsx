@@ -205,7 +205,7 @@ function VehiclesPage() {
       ) : null}
 
       {listError ? (
-        <p className="mb-4 text-sm text-red-400" role="alert">
+        <p className="mb-4 text-sm text-danger" role="alert">
           {listError}
         </p>
       ) : null}
@@ -411,7 +411,7 @@ function VehiclesPage() {
           />
 
           {formError ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {formError}
             </p>
           ) : null}

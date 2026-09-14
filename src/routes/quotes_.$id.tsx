@@ -258,7 +258,7 @@ function QuoteDetailPage() {
       </div>
 
       {listError ? (
-        <p className="mt-4 text-sm text-red-400" role="alert">
+        <p className="mt-4 text-sm text-danger" role="alert">
           {listError}
         </p>
       ) : null}
@@ -362,7 +362,7 @@ function QuoteDetailPage() {
           />
 
           {headerError ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {headerError}
             </p>
           ) : null}
@@ -403,7 +403,7 @@ function QuoteDetailPage() {
           </div>
 
           {formError ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {formError}
             </p>
           ) : null}

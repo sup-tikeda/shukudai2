@@ -16,7 +16,7 @@ export const button = tv({
       ghost: "text-ink-muted hover:bg-surface-raised hover:text-ink",
       // 削除など戻せない操作
       danger:
-        "border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20",
+        "border border-danger/30 bg-danger/8 text-danger hover:bg-danger/15",
     },
     size: {
       md: "h-10 px-4 text-sm",
@@ -27,13 +27,13 @@ export const button = tv({
 });
 
 const control = tv({
-  base: "w-full rounded-md border border-line bg-shell px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent data-[invalid]:border-red-500",
+  base: "w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent/20 data-[invalid]:border-danger",
 });
 
 const label = tv({
   base: "text-xs font-medium tracking-wide text-ink-muted uppercase",
 });
-const errorText = tv({ base: "text-xs text-red-400" });
+const errorText = tv({ base: "text-xs text-danger" });
 
 type TextFieldProps = {
   name: string;
@@ -154,9 +154,9 @@ export function Modal({
       open={open}
       onOpenChange={(details) => onOpenChange(details.open)}
     >
-      <Dialog.Backdrop className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+      <Dialog.Backdrop className="fixed inset-0 bg-ink/25 backdrop-blur-sm" />
       <Dialog.Positioner className="fixed inset-0 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
-        <Dialog.Content className="my-auto w-full max-w-md rounded-xl border border-line bg-surface shadow-2xl shadow-black/50">
+        <Dialog.Content className="my-auto w-full max-w-md rounded-xl border border-line bg-surface shadow-xl shadow-ink/10">
           <div className="flex items-center justify-between gap-2 border-b border-line px-6 py-4">
             <Dialog.Title className="text-base font-bold text-ink">
               {title}
@@ -184,7 +184,7 @@ export function FormCard({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-md rounded-xl border border-line bg-surface p-8 shadow-2xl shadow-black/40">
+    <div className="mx-auto w-full max-w-md rounded-xl border border-line bg-surface p-8 shadow-xl shadow-ink/10">
       <h1 className="text-xl font-bold text-ink">{title}</h1>
       {description ? (
         <p className="mt-1 text-sm text-ink-muted">{description}</p>

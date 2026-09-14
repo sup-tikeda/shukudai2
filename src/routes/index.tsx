@@ -97,12 +97,17 @@ function DashboardPage() {
           <span />
         )}
         <span className="flex flex-wrap gap-4">
-          {/* 店舗の紹介ページ（お客様向け）。管理画面からも確認できるようにしておく */}
+          {/*
+            店舗の紹介ページ（お客様向け）。管理画面とは配色も役割も違うため、
+            作業中の画面を閉じずに見られるよう別ウィンドウで開く
+          */}
           <Link
             to="/lp"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-ink-faint underline underline-offset-4 transition-colors hover:text-accent"
           >
-            店舗紹介ページ
+            店舗紹介ページ（別ウィンドウ）
           </Link>
           <Link
             to="/contact"

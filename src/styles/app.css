@@ -1,26 +1,61 @@
 @import "tailwindcss";
 
 /**
- * 整備工場をイメージしたダークテーマ。
- * 色はここで意味のある名前に束ね、画面側では役割で参照する
+ * 配色は「役割の名前」に束ね、画面側では役割で参照する
  * （後から配色を変える時に1箇所で済むようにするため）。
+ *
+ * 既定は管理画面向けの明るいテーマ。長時間の入力作業で見やすいよう、
+ * 白地に薄いグレーの罫線を基本とし、オレンジは主操作だけに使う。
+ * 店舗紹介ページ（LP）だけは後述の .theme-dark で暗い配色に切り替えている。
  */
 @theme {
   /* 背景（奥 → 手前） */
+  --color-shell: oklch(0.975 0.003 250);
+  --color-surface: oklch(1 0 0);
+  --color-surface-raised: oklch(0.962 0.004 250);
+  --color-line: oklch(0.905 0.006 250);
+
+  /* 文字（濃い → 薄い） */
+  --color-ink: oklch(0.26 0.012 260);
+  --color-ink-muted: oklch(0.48 0.012 260);
+  --color-ink-faint: oklch(0.63 0.012 260);
+
+  /* アクセント（工具・標識のオレンジ）。白地でも読めるよう暗めに寄せている */
+  --color-accent: oklch(0.58 0.17 45);
+  --color-accent-strong: oklch(0.52 0.17 42);
+  --color-accent-ink: oklch(1 0 0);
+
+  /* 状態を表す色。赤・緑・青も直接指定せず役割名で使う */
+  --color-danger: oklch(0.53 0.19 25);
+  --color-success: oklch(0.5 0.13 155);
+  --color-info: oklch(0.5 0.14 245);
+}
+
+/**
+ * 暗い配色に切り替えるための上書き。
+ * 変数を再定義するだけなので、画面側のクラス（bg-surface など）は書き換え不要。
+ * 現在は店舗紹介ページ（LP）でのみ使っている。
+ */
+.theme-dark {
   --color-shell: oklch(0.16 0.006 260);
   --color-surface: oklch(0.21 0.008 260);
   --color-surface-raised: oklch(0.25 0.009 260);
   --color-line: oklch(0.31 0.01 260);
 
-  /* 文字 */
   --color-ink: oklch(0.96 0.003 260);
   --color-ink-muted: oklch(0.72 0.012 260);
   --color-ink-faint: oklch(0.58 0.012 260);
 
-  /* アクセント（工具・標識のオレンジ） */
   --color-accent: oklch(0.72 0.17 55);
   --color-accent-strong: oklch(0.66 0.18 50);
   --color-accent-ink: oklch(0.18 0.02 60);
+
+  --color-danger: oklch(0.7 0.17 25);
+  --color-success: oklch(0.75 0.14 155);
+  --color-info: oklch(0.75 0.12 245);
+
+  /* 暗い背景ではフォーム部品も暗く描画させる（カレンダーのアイコン等） */
+  color-scheme: dark;
 }
 
 /* 選択範囲もアクセント色に合わせる */
@@ -29,9 +64,8 @@
   color: var(--color-accent-ink);
 }
 
-/* 暗い背景ではフォーム部品も暗く描画させる（カレンダーのアイコン等） */
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 /**

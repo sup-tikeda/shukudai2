@@ -254,9 +254,9 @@ const badge = tv({
   variants: {
     tone: {
       neutral: "bg-surface-raised text-ink-muted ring-1 ring-line ring-inset",
-      accent: "bg-accent/15 text-accent ring-1 ring-accent/30 ring-inset",
-      done: "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30 ring-inset",
-      info: "bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/30 ring-inset",
+      accent: "bg-accent/10 text-accent ring-1 ring-accent/25 ring-inset",
+      done: "bg-success/10 text-success ring-1 ring-success/25 ring-inset",
+      info: "bg-info/10 text-info ring-1 ring-info/25 ring-inset",
     },
   },
   defaultVariants: { tone: "neutral" },

@@ -188,7 +188,7 @@ function EmployeeSection({
   return (
     <>
       {listError ? (
-        <p className="mb-4 text-sm text-red-400" role="alert">
+        <p className="mb-4 text-sm text-danger" role="alert">
           {listError}
         </p>
       ) : null}
@@ -297,7 +297,7 @@ function EmployeeSection({
           />
 
           {formError ? (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {formError}
             </p>
           ) : null}
@@ -431,12 +431,12 @@ function ShopSettingsSection({
         />
 
         {formError ? (
-          <p className="text-sm text-red-400" role="alert">
+          <p className="text-sm text-danger" role="alert">
             {formError}
           </p>
         ) : null}
         {saved && !formError ? (
-          <p className="text-sm text-emerald-400">保存しました。</p>
+          <p className="text-sm text-success">保存しました。</p>
         ) : null}
 
         <button

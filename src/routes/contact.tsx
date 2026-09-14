@@ -84,10 +84,10 @@ function ContactPage() {
           />
 
           {status === "done" ? (
-            <p className="text-sm text-emerald-400">送信しました。</p>
+            <p className="text-sm text-success">送信しました。</p>
           ) : null}
           {status === "error" ? (
-            <p className="text-sm text-red-400">
+            <p className="text-sm text-danger">
               送信に失敗しました。時間をおいて再度お試しください。
             </p>
           ) : null}
