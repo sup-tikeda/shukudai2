@@ -71,15 +71,27 @@ function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* 6枚になったため、4列だと最終行が半端になる。3列×2段にして揃える */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatTile label="顧客" value={stats.customers} unit="名" />
         <StatTile label="車両" value={stats.vehicles} unit="台" />
         <StatTile label="対応中の案件" value={stats.openCases} unit="件" />
-        {/* 4つの中でいちばん見てほしい数字なので、ここだけ塗りつぶす */}
+        {/* 8つの中でいちばん見てほしい数字なので、ここだけ塗りつぶす */}
         <StatTile
           label="請求金額（税込）"
           value={`¥${stats.invoiceTotal.toLocaleString()}`}
           accent
+        />
+        {/* 確定売上（請求金額）と対にして、まだ入っていない見込み売上が分かるようにする */}
+        <StatTile
+          label="見積中の金額（税込）"
+          value={`¥${stats.quoteTotal.toLocaleString()}`}
+        />
+        {/* 緊急度の高い数字なので、下のアラート一覧に埋もれないようここでも件数だけ示す */}
+        <StatTile
+          label="車検切れ間近"
+          value={stats.inspectionAlertCount}
+          unit="台"
         />
       </div>
 
