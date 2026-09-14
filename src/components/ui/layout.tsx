@@ -64,7 +64,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     // 画面の高さに収める。はみ出す部分は本文の中だけでスクロールさせる
     <div className="flex h-screen overflow-hidden bg-shell text-ink">
       {/* 左サイドバー。広い画面では常に出したままにして、現在地が分かるようにする */}
-      <aside className="hidden h-full w-56 shrink-0 flex-col border-r border-line bg-surface lg:flex">
+      {/* 高さは親（h-screen）に合わせて自動で伸びる（align-items: stretch） */}
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-surface lg:flex">
         <Link to="/" className="flex items-center gap-2.5 px-5 py-4">
           <BrandMark />
           <span className="leading-tight">
@@ -133,8 +134,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           一覧のように「見出しは固定して中身だけスクロールしたい」画面は
           Card に fill を付ければよい（1画面に収まるようにするため）。
         */}
-        <main className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 py-6 sm:px-6">
+        {/*
+          高さはflexだけで決める（min-height:100% のようなパーセント指定は使わない）。
+          パーセントの高さは「親の高さが確定していること」が条件で、条件が崩れると
+          子が高さいっぱいに広がらず、ページ全体がスクロールしてしまうため。
+        */}
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-6 sm:px-6">
             {children}
           </div>
         </main>
