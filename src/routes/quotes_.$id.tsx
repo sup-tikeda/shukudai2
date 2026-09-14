@@ -5,11 +5,9 @@ import {
   AppShell,
   Badge,
   Card,
+  DataTable,
   docTypeTone,
-  EmptyState,
   PageHeader,
-  Row,
-  RowList,
 } from "~/components/ui/layout";
 import {
   quoteDocTypeValues,
@@ -328,50 +326,85 @@ function QuoteDetailPage() {
             </button>
           }
         >
-          {quote.items.length === 0 ? (
-            <EmptyState message="明細項目がありません。「＋ 項目を追加」から登録してください。" />
-          ) : (
-            <RowList>
-              {quote.items.map((item) => (
-                <Row
-                  key={item.id}
-                  actions={
-                    <>
-                      <button
-                        type="button"
-                        className={button({ variant: "ghost", size: "sm" })}
-                        onClick={() => {
-                          setFormError(null);
-                          setModal({ mode: "edit", item });
-                        }}
-                      >
-                        編集
-                      </button>
-                      <button
-                        type="button"
-                        className={button({ variant: "ghost", size: "sm" })}
-                        onClick={() => handleDeleteItem(item)}
-                      >
-                        削除
-                      </button>
-                    </>
-                  }
-                >
+          <DataTable
+            rows={quote.items}
+            rowKey={(item) => item.id}
+            emptyMessage="明細項目がありません。「＋ 項目を追加」から登録してください。"
+            columns={[
+              {
+                key: "name",
+                header: "項目名",
+                width: "min-w-[10rem]",
+                render: (item: QuoteItemRow) => (
                   <p className="font-medium break-words">{item.name}</p>
-                  <p className="mt-0.5 text-sm text-ink-muted tabular-nums">
-                    {item.quantity} × ¥{item.unitPrice.toLocaleString()} ={" "}
-                    <span className="text-ink">
-                      ¥{(item.quantity * item.unitPrice).toLocaleString()}
-                    </span>
-                    <span className="text-ink-faint">
-                      {" "}
-                      （税率 {item.taxRate}%）
-                    </span>
-                  </p>
-                </Row>
-              ))}
-            </RowList>
-          )}
+                ),
+              },
+              {
+                key: "quantity",
+                header: "数量",
+                align: "right",
+                render: (item: QuoteItemRow) => (
+                  <span className="tabular-nums">{item.quantity}</span>
+                ),
+              },
+              {
+                key: "unitPrice",
+                header: "単価",
+                align: "right",
+                render: (item: QuoteItemRow) => (
+                  <span className="whitespace-nowrap tabular-nums">
+                    ¥{item.unitPrice.toLocaleString()}
+                  </span>
+                ),
+              },
+              {
+                key: "taxRate",
+                header: "税率",
+                align: "center",
+                render: (item: QuoteItemRow) => (
+                  <span className="whitespace-nowrap text-ink-faint tabular-nums">
+                    {item.taxRate}%
+                  </span>
+                ),
+              },
+              {
+                key: "subtotal",
+                header: "小計",
+                align: "right",
+                render: (item: QuoteItemRow) => (
+                  <span className="whitespace-nowrap font-bold tabular-nums">
+                    ¥{(item.quantity * item.unitPrice).toLocaleString()}
+                  </span>
+                ),
+              },
+              {
+                key: "actions",
+                header: "",
+                align: "right",
+                render: (item: QuoteItemRow) => (
+                  <div className="flex justify-end gap-2 whitespace-nowrap">
+                    <button
+                      type="button"
+                      className={button({ variant: "ghost", size: "sm" })}
+                      onClick={() => {
+                        setFormError(null);
+                        setModal({ mode: "edit", item });
+                      }}
+                    >
+                      編集
+                    </button>
+                    <button
+                      type="button"
+                      className={button({ variant: "ghost", size: "sm" })}
+                      onClick={() => handleDeleteItem(item)}
+                    >
+                      削除
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+          />
         </Card>
       </div>
 

@@ -5,9 +5,8 @@ import {
   AppShell,
   Badge,
   Card,
+  DataTable,
   PageHeader,
-  Row,
-  RowList,
 } from "~/components/ui/layout";
 import { calculateAge, isRetired } from "~/lib/staff";
 import {
@@ -275,12 +274,113 @@ function EmployeeSection({
           </button>
         }
       >
-        <RowList>
-          {accounts.map((account) => (
-            <Row
-              key={account.id}
-              actions={
+        <DataTable
+          rows={accounts}
+          rowKey={(account) => account.id}
+          emptyMessage="社員が登録されていません。"
+          columns={[
+            {
+              key: "staffCode",
+              header: "社員コード",
+              render: (account: Account) => (
+                <span className="whitespace-nowrap text-ink-faint tabular-nums">
+                  {account.staffCode
+                    ? String(account.staffCode).padStart(6, "0")
+                    : "------"}
+                </span>
+              ),
+            },
+            {
+              key: "name",
+              header: "氏名",
+              width: "min-w-[10rem]",
+              render: (account: Account) => (
                 <>
+                  <p className="font-medium break-words">{account.name}</p>
+                  {account.nameKana ? (
+                    <p className="mt-0.5 text-xs text-ink-faint">
+                      {account.nameKana}
+                    </p>
+                  ) : null}
+                </>
+              ),
+            },
+            {
+              key: "role",
+              header: "権限",
+              render: (account: Account) => (
+                <Badge tone={account.role === "admin" ? "accent" : "neutral"}>
+                  {roleOptions.find((o) => o.value === account.role)?.label ??
+                    account.role}
+                </Badge>
+              ),
+            },
+            {
+              key: "position",
+              header: "役職・資格",
+              render: (account: Account) => {
+                const values = [account.position, account.qualification]
+                  .filter(Boolean)
+                  .join(" ／ ");
+                return values || <span className="text-ink-faint">-</span>;
+              },
+            },
+            {
+              key: "hiredOn",
+              header: "入社日",
+              render: (account: Account) => (
+                <span className="whitespace-nowrap tabular-nums">
+                  {account.hiredOn ? (
+                    <>
+                      {account.hiredOn}
+                      {describeAge(account.birthday) ? (
+                        <span className="ml-1 text-ink-faint">
+                          （{describeAge(account.birthday)}）
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="text-ink-faint">-</span>
+                  )}
+                </span>
+              ),
+            },
+            {
+              key: "status",
+              header: "状態",
+              render: (account: Account) => (
+                <div className="flex flex-wrap gap-1">
+                  {/* 退職者は一覧でもすぐ分かるようにする（担当者には選べなくなるため） */}
+                  {isRetired(account.retiredOn) ? (
+                    <Badge>退職（{account.retiredOn}）</Badge>
+                  ) : null}
+                  {/* 認証情報が無い社員。名簿には載るが、この画面でパスワードを設定するまでログインできない */}
+                  {account.canLogin ? null : <Badge>ログイン不可</Badge>}
+                </div>
+              ),
+            },
+            {
+              key: "contact",
+              header: "連絡先",
+              render: (account: Account) => (
+                <>
+                  <p className="whitespace-nowrap text-ink-faint">
+                    @{account.username}
+                  </p>
+                  {account.mobilePhone ? (
+                    <p className="mt-0.5 whitespace-nowrap tabular-nums">
+                      {account.mobilePhone}
+                    </p>
+                  ) : null}
+                </>
+              ),
+            },
+            {
+              key: "actions",
+              header: "",
+              align: "right",
+              render: (account: Account) => (
+                <div className="flex justify-end gap-2 whitespace-nowrap">
                   <button
                     type="button"
                     className={button({ variant: "ghost", size: "sm" })}
@@ -298,53 +398,11 @@ function EmployeeSection({
                   >
                     削除
                   </button>
-                </>
-              }
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                {/* 社員コード。勤怠や書類で人を特定するのに使う */}
-                <span className="text-xs text-ink-faint tabular-nums">
-                  {account.staffCode
-                    ? String(account.staffCode).padStart(6, "0")
-                    : "------"}
-                </span>
-                <p className="font-medium break-words">{account.name}</p>
-                {account.nameKana ? (
-                  <span className="text-xs text-ink-faint">
-                    （{account.nameKana}）
-                  </span>
-                ) : null}
-                <Badge tone={account.role === "admin" ? "accent" : "neutral"}>
-                  {roleOptions.find((o) => o.value === account.role)?.label ??
-                    account.role}
-                </Badge>
-                {/* 退職者は一覧でもすぐ分かるようにする（担当者には選べなくなるため） */}
-                {isRetired(account.retiredOn) ? (
-                  <Badge>退職（{account.retiredOn}）</Badge>
-                ) : null}
-                {/* 認証情報が無い社員。名簿には載るが、この画面でパスワードを設定するまでログインできない */}
-                {account.canLogin ? null : <Badge>ログイン不可</Badge>}
-              </div>
-              <p className="mt-0.5 text-sm text-ink-muted break-words">
-                {[
-                  `@${account.username}`,
-                  account.position,
-                  describeAge(account.birthday),
-                  account.hiredOn ? `入社 ${account.hiredOn}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" ／ ")}
-              </p>
-              {account.qualification || account.mobilePhone ? (
-                <p className="mt-0.5 text-xs text-ink-faint break-words">
-                  {[account.qualification, account.mobilePhone]
-                    .filter(Boolean)
-                    .join(" ／ ")}
-                </p>
-              ) : null}
-            </Row>
-          ))}
-        </RowList>
+                </div>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       <Modal

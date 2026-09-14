@@ -9,7 +9,7 @@ import {
   ListToolbar,
   matchesQuery,
   PageHeader,
-  remainingDays,
+  RemainingDaysLabel,
   statusTone,
 } from "~/components/ui/layout";
 import {
@@ -321,7 +321,7 @@ function CasesPage() {
                   <p className="mt-0.5">
                     {c.plannedEndOn || "-"}
                     {c.status !== "完了済み" && c.plannedEndOn ? (
-                      <RemainingDays endOn={c.plannedEndOn} />
+                      <RemainingDaysLabel endOn={c.plannedEndOn} />
                     ) : null}
                   </p>
                 </div>
@@ -471,15 +471,3 @@ function CasesPage() {
   );
 }
 
-/** 終了予定日までの残り日数。期限切れは赤、3日以内はオレンジで注意を促す。 */
-function RemainingDays({ endOn }: { endOn: string }) {
-  const days = remainingDays(endOn);
-  if (days === null) return null;
-  const tone =
-    days === 0 ? "text-danger" : days <= 3 ? "text-accent" : "text-ink-faint";
-  return (
-    <span className={`ml-2 ${tone}`}>
-      {days === 0 ? "（期限超過）" : `（残り${days}日）`}
-    </span>
-  );
-}

@@ -4,14 +4,12 @@ import {
   AppShell,
   Badge,
   Card,
+  DataTable,
   DetailItem,
   DetailList,
   docTypeTone,
-  EmptyState,
   PageHeader,
-  remainingDays,
-  Row,
-  RowList,
+  RemainingDaysLabel,
   statusTone,
 } from "~/components/ui/layout";
 import { getCase } from "~/server/cases";
@@ -28,6 +26,8 @@ export const Route = createFileRoute("/cases_/$id")({
   },
   component: CaseDetailPage,
 });
+
+type QuoteRow = ReturnType<typeof Route.useLoaderData>["quotes"][number];
 
 function CaseDetailPage() {
   const { item, quotes } = Route.useLoaderData();
@@ -68,11 +68,7 @@ function CaseDetailPage() {
               <>
                 {item.plannedEndOn}
                 {item.status !== "完了済み" ? (
-                  <span className="ml-2 text-ink-faint">
-                    {remainingDays(item.plannedEndOn) === 0
-                      ? "（期限超過）"
-                      : `（残り${remainingDays(item.plannedEndOn)}日）`}
-                  </span>
+                  <RemainingDaysLabel endOn={item.plannedEndOn} />
                 ) : null}
               </>
             ) : null}
@@ -103,36 +99,67 @@ function CaseDetailPage() {
             </Link>
           }
         >
-          {quotes.length === 0 ? (
-            <EmptyState message="この案件の見積・請求はまだありません。" />
-          ) : (
-            <RowList>
-              {quotes.map((q) => (
-                <Row
-                  key={q.id}
-                  actions={
-                    <Link
-                      to="/quotes/$id"
-                      params={{ id: q.id }}
-                      className={button({ variant: "outline", size: "sm" })}
-                    >
-                      詳細
-                    </Link>
-                  }
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
-                    <p className="font-medium break-words">
-                      {q.title || "（タイトル未設定）"}
-                    </p>
-                  </div>
-                  <p className="mt-0.5 text-sm text-ink-muted tabular-nums">
-                    税込 ¥{q.total.toLocaleString()} ／ 作成日 {q.createdOn}
+          <DataTable
+            rows={quotes}
+            rowKey={(q) => q.id}
+            emptyMessage="この案件の見積・請求はまだありません。"
+            columns={[
+              {
+                key: "docType",
+                header: "種別",
+                render: (q: QuoteRow) => (
+                  <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
+                ),
+              },
+              {
+                key: "title",
+                header: "タイトル",
+                width: "min-w-[10rem]",
+                render: (q: QuoteRow) => (
+                  <p className="font-medium break-words">
+                    {q.title || (
+                      <span className="text-ink-faint">
+                        （タイトル未設定）
+                      </span>
+                    )}
                   </p>
-                </Row>
-              ))}
-            </RowList>
-          )}
+                ),
+              },
+              {
+                key: "total",
+                header: "金額（税込）",
+                align: "right",
+                render: (q: QuoteRow) => (
+                  <span className="whitespace-nowrap font-bold text-accent tabular-nums">
+                    ¥{q.total.toLocaleString()}
+                  </span>
+                ),
+              },
+              {
+                key: "createdOn",
+                header: "作成日",
+                render: (q: QuoteRow) => (
+                  <span className="whitespace-nowrap tabular-nums">
+                    {q.createdOn}
+                  </span>
+                ),
+              },
+              {
+                key: "actions",
+                header: "",
+                align: "right",
+                render: (q: QuoteRow) => (
+                  <Link
+                    to="/quotes/$id"
+                    params={{ id: q.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                ),
+              },
+            ]}
+          />
         </Card>
       </div>
     </AppShell>

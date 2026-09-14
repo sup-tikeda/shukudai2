@@ -4,13 +4,11 @@ import {
   AppShell,
   Badge,
   Card,
+  DataTable,
   DetailItem,
   DetailList,
   docTypeTone,
-  EmptyState,
   PageHeader,
-  Row,
-  RowList,
   statusTone,
 } from "~/components/ui/layout";
 import { listCases } from "~/server/cases";
@@ -41,6 +39,10 @@ export const Route = createFileRoute("/customers_/$id")({
   },
   component: CustomerDetailPage,
 });
+
+type VehicleRow = ReturnType<typeof Route.useLoaderData>["vehicles"][number];
+type CaseRow = ReturnType<typeof Route.useLoaderData>["cases"][number];
+type QuoteRow = ReturnType<typeof Route.useLoaderData>["quotes"][number];
 
 function CustomerDetailPage() {
   const { customer, vehicles, cases, quotes } = Route.useLoaderData();
@@ -94,104 +96,192 @@ function CustomerDetailPage() {
             </Link>
           }
         >
-          {vehicles.length === 0 ? (
-            <EmptyState message="保有車両はありません。" />
-          ) : (
-            <RowList>
-              {vehicles.map((vehicle) => (
-                <Row
-                  key={vehicle.id}
-                  actions={
-                    <Link
-                      to="/vehicles/$id"
-                      params={{ id: vehicle.id }}
-                      className={button({ variant: "outline", size: "sm" })}
-                    >
-                      詳細
-                    </Link>
-                  }
-                >
-                  <p className="font-medium break-words">{vehicle.modelName}</p>
-                  <p className="mt-0.5 text-sm text-ink-muted">
-                    {vehicle.maker || "メーカー未登録"} ／ 案件{" "}
-                    {vehicle.caseCount} 件
-                    {vehicle.inspectionExpiresOn
-                      ? ` ／ 車検期限 ${vehicle.inspectionExpiresOn}`
-                      : ""}
+          <DataTable
+            rows={vehicles}
+            rowKey={(vehicle) => vehicle.id}
+            emptyMessage="保有車両はありません。"
+            columns={[
+              {
+                key: "model",
+                header: "モデル名",
+                width: "min-w-[9rem]",
+                render: (vehicle: VehicleRow) => (
+                  <p className="font-medium break-words">
+                    {vehicle.modelName}
                   </p>
-                </Row>
-              ))}
-            </RowList>
-          )}
+                ),
+              },
+              {
+                key: "maker",
+                header: "メーカー",
+                render: (vehicle: VehicleRow) =>
+                  vehicle.maker || <span className="text-ink-faint">-</span>,
+              },
+              {
+                key: "cases",
+                header: "案件",
+                align: "center",
+                render: (vehicle: VehicleRow) => (
+                  <span className="whitespace-nowrap tabular-nums">
+                    {vehicle.caseCount} 件
+                  </span>
+                ),
+              },
+              {
+                key: "inspection",
+                header: "車検期限",
+                render: (vehicle: VehicleRow) =>
+                  vehicle.inspectionExpiresOn || (
+                    <span className="text-ink-faint">-</span>
+                  ),
+              },
+              {
+                key: "actions",
+                header: "",
+                align: "right",
+                render: (vehicle: VehicleRow) => (
+                  <Link
+                    to="/vehicles/$id"
+                    params={{ id: vehicle.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                ),
+              },
+            ]}
+          />
         </Card>
       </div>
 
       <div className="mt-6">
         <Card title="案件" count={`${cases.length} 件`}>
-          {cases.length === 0 ? (
-            <EmptyState message="案件はありません。" />
-          ) : (
-            <RowList>
-              {cases.map((c) => (
-                <Row
-                  key={c.id}
-                  actions={
-                    <Link
-                      to="/cases/$id"
-                      params={{ id: c.id }}
-                      className={button({ variant: "outline", size: "sm" })}
-                    >
-                      詳細
-                    </Link>
-                  }
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium break-words">{c.title}</p>
-                    <Badge tone={statusTone(c.status)}>{c.status}</Badge>
-                    {c.invoiced ? <Badge tone="done">請求済み</Badge> : null}
-                  </div>
-                  <p className="mt-0.5 text-sm text-ink-muted">
-                    {c.vehicleName} ／ 担当: {c.assignee || "未定"}
-                  </p>
-                </Row>
-              ))}
-            </RowList>
-          )}
+          <DataTable
+            rows={cases}
+            rowKey={(c) => c.id}
+            emptyMessage="案件はありません。"
+            columns={[
+              {
+                key: "title",
+                header: "案件名",
+                width: "min-w-[10rem]",
+                render: (c: CaseRow) => (
+                  <p className="font-medium break-words">{c.title}</p>
+                ),
+              },
+              {
+                key: "status",
+                header: "ステータス",
+                render: (c: CaseRow) => (
+                  <Badge tone={statusTone(c.status)}>{c.status}</Badge>
+                ),
+              },
+              {
+                key: "vehicle",
+                header: "車両",
+                render: (c: CaseRow) => (
+                  <span className="break-words">{c.vehicleName}</span>
+                ),
+              },
+              {
+                key: "assignee",
+                header: "担当者",
+                render: (c: CaseRow) =>
+                  c.assignee || <span className="text-ink-faint">未定</span>,
+              },
+              {
+                key: "invoiced",
+                header: "請求",
+                align: "center",
+                render: (c: CaseRow) =>
+                  c.invoiced ? (
+                    <Badge tone="done">済み</Badge>
+                  ) : (
+                    <span className="text-ink-faint">-</span>
+                  ),
+              },
+              {
+                key: "actions",
+                header: "",
+                align: "right",
+                render: (c: CaseRow) => (
+                  <Link
+                    to="/cases/$id"
+                    params={{ id: c.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                ),
+              },
+            ]}
+          />
         </Card>
       </div>
 
       <div className="mt-6">
         <Card title="見積・請求" count={`${quotes.length} 件`}>
-          {quotes.length === 0 ? (
-            <EmptyState message="見積・請求はありません。" />
-          ) : (
-            <RowList>
-              {quotes.map((q) => (
-                <Row
-                  key={q.id}
-                  actions={
-                    <Link
-                      to="/quotes/$id"
-                      params={{ id: q.id }}
-                      className={button({ variant: "outline", size: "sm" })}
-                    >
-                      詳細
-                    </Link>
-                  }
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
-                    <p className="font-medium break-words">
-                      {q.title || "（タイトル未設定）"}
-                    </p>
-                  </div>
-                  <p className="mt-0.5 text-sm text-ink-muted tabular-nums">
-                    税込 ¥{q.total.toLocaleString()} ／ 作成日 {q.createdOn}
+          <DataTable
+            rows={quotes}
+            rowKey={(q) => q.id}
+            emptyMessage="見積・請求はありません。"
+            columns={[
+              {
+                key: "docType",
+                header: "種別",
+                render: (q: QuoteRow) => (
+                  <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
+                ),
+              },
+              {
+                key: "title",
+                header: "タイトル",
+                width: "min-w-[10rem]",
+                render: (q: QuoteRow) => (
+                  <p className="font-medium break-words">
+                    {q.title || (
+                      <span className="text-ink-faint">
+                        （タイトル未設定）
+                      </span>
+                    )}
                   </p>
-                </Row>
-              ))}
-            </RowList>
-          )}
+                ),
+              },
+              {
+                key: "total",
+                header: "金額（税込）",
+                align: "right",
+                render: (q: QuoteRow) => (
+                  <span className="whitespace-nowrap font-bold text-accent tabular-nums">
+                    ¥{q.total.toLocaleString()}
+                  </span>
+                ),
+              },
+              {
+                key: "createdOn",
+                header: "作成日",
+                render: (q: QuoteRow) => (
+                  <span className="whitespace-nowrap tabular-nums">
+                    {q.createdOn}
+                  </span>
+                ),
+              },
+              {
+                key: "actions",
+                header: "",
+                align: "right",
+                render: (q: QuoteRow) => (
+                  <Link
+                    to="/quotes/$id"
+                    params={{ id: q.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                ),
+              },
+            ]}
+          />
         </Card>
       </div>
     </AppShell>

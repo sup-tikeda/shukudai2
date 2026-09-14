@@ -570,6 +570,22 @@ export function remainingDays(endOn: string | null | undefined) {
   return diff < 0 ? 0 : diff;
 }
 
+/**
+ * 終了予定日までの残り日数を添える短い注記。期限切れは赤、3日以内はオレンジで注意を促す。
+ * 案件一覧・案件詳細・車両詳細（この車両の案件一覧）で共通して使う。
+ */
+export function RemainingDaysLabel({ endOn }: { endOn: string }) {
+  const days = remainingDays(endOn);
+  if (days === null) return null;
+  const tone =
+    days === 0 ? "text-danger" : days <= 3 ? "text-accent" : "text-ink-faint";
+  return (
+    <span className={`ml-2 ${tone}`}>
+      {days === 0 ? "（期限超過）" : `（残り${days}日）`}
+    </span>
+  );
+}
+
 /** 検索語がどれかの項目に含まれるかを判定する（全角・半角と大文字小文字は区別しない） */
 export function matchesQuery(query: string, values: (string | null | undefined)[]) {
   const needle = query.trim().toLowerCase();

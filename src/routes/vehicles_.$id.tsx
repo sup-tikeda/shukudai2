@@ -4,12 +4,11 @@ import {
   AppShell,
   Badge,
   Card,
+  DataTable,
   DetailItem,
   DetailList,
-  EmptyState,
   PageHeader,
-  Row,
-  RowList,
+  RemainingDaysLabel,
   statusTone,
 } from "~/components/ui/layout";
 import { listCases } from "~/server/cases";
@@ -28,6 +27,8 @@ export const Route = createFileRoute("/vehicles_/$id")({
   },
   component: VehicleDetailPage,
 });
+
+type CaseRow = ReturnType<typeof Route.useLoaderData>["cases"][number];
 
 function VehicleDetailPage() {
   const { vehicle, cases } = Route.useLoaderData();
@@ -92,36 +93,74 @@ function VehicleDetailPage() {
             </Link>
           }
         >
-          {cases.length === 0 ? (
-            <EmptyState message="この車両の案件はまだありません。" />
-          ) : (
-            <RowList>
-              {cases.map((c) => (
-                <Row
-                  key={c.id}
-                  actions={
-                    <Link
-                      to="/cases/$id"
-                      params={{ id: c.id }}
-                      className={button({ variant: "outline", size: "sm" })}
-                    >
-                      詳細
-                    </Link>
-                  }
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium break-words">{c.title}</p>
-                    <Badge tone={statusTone(c.status)}>{c.status}</Badge>
-                    {c.invoiced ? <Badge tone="done">請求済み</Badge> : null}
+          <DataTable
+            rows={cases}
+            rowKey={(c) => c.id}
+            emptyMessage="この車両の案件はまだありません。"
+            columns={[
+              {
+                key: "title",
+                header: "案件名",
+                width: "min-w-[10rem]",
+                render: (c: CaseRow) => (
+                  <p className="font-medium break-words">{c.title}</p>
+                ),
+              },
+              {
+                key: "status",
+                header: "ステータス",
+                render: (c: CaseRow) => (
+                  <Badge tone={statusTone(c.status)}>{c.status}</Badge>
+                ),
+              },
+              {
+                key: "assignee",
+                header: "担当者",
+                render: (c: CaseRow) =>
+                  c.assignee || <span className="text-ink-faint">未定</span>,
+              },
+              {
+                key: "planned",
+                header: "作業予定",
+                render: (c: CaseRow) => (
+                  <div className="whitespace-nowrap tabular-nums">
+                    <p>{c.plannedStartOn || "-"} 〜</p>
+                    <p className="mt-0.5">
+                      {c.plannedEndOn || "-"}
+                      {c.status !== "完了済み" && c.plannedEndOn ? (
+                        <RemainingDaysLabel endOn={c.plannedEndOn} />
+                      ) : null}
+                    </p>
                   </div>
-                  <p className="mt-0.5 text-sm text-ink-muted">
-                    担当: {c.assignee || "未定"} ／ {c.plannedStartOn || "-"} 〜{" "}
-                    {c.plannedEndOn || "-"}
-                  </p>
-                </Row>
-              ))}
-            </RowList>
-          )}
+                ),
+              },
+              {
+                key: "invoiced",
+                header: "請求",
+                align: "center",
+                render: (c: CaseRow) =>
+                  c.invoiced ? (
+                    <Badge tone="done">済み</Badge>
+                  ) : (
+                    <span className="text-ink-faint">-</span>
+                  ),
+              },
+              {
+                key: "actions",
+                header: "",
+                align: "right",
+                render: (c: CaseRow) => (
+                  <Link
+                    to="/cases/$id"
+                    params={{ id: c.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                ),
+              },
+            ]}
+          />
         </Card>
       </div>
     </AppShell>
