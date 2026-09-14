@@ -14,7 +14,8 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       // 社内限定の練習課題アプリのため、検索エンジンに登録されないようにする
       { name: "robots", content: "noindex, nofollow" },
-      { title: "社内ダッシュボード" },
+      { name: "theme-color", content: "#1a1a1d" },
+      { title: "バイクショップ店舗管理" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
@@ -35,7 +36,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="bg-slate-50 text-slate-900">
+      <body className="bg-shell text-ink antialiased">
         {children}
         <Scripts />
       </body>

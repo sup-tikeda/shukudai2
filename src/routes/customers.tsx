@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, TextField } from "~/components/ui/form";
-import { signOut } from "~/lib/auth-client";
+import {
+  AppShell,
+  Card,
+  EmptyState,
+  PageHeader,
+  Row,
+  RowList,
+} from "~/components/ui/layout";
 import { customerInputSchema, customerUpdateInputSchema } from "~/lib/validation";
 import {
   createCustomer,
@@ -31,11 +38,6 @@ function CustomersPage() {
 
   async function reload() {
     await router.invalidate();
-  }
-
-  async function handleSignOut() {
-    await signOut();
-    await router.navigate({ to: "/login" });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -83,7 +85,9 @@ function CustomersPage() {
   }
 
   async function handleDelete(customer: Customer) {
-    if (!window.confirm(`「${customer.name}」を削除しますか？（保有車両も削除されます）`)) {
+    if (
+      !window.confirm(`「${customer.name}」を削除しますか？（保有車両も削除されます）`)
+    ) {
       return;
     }
     setListError(null);
@@ -96,28 +100,11 @@ function CustomersPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm">
-            <Link to="/" className="text-slate-500 underline">
-              ← ダッシュボードへ
-            </Link>
-          </p>
-          <h1 className="text-xl font-bold">顧客</h1>
-        </div>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className={button({ variant: "outline", size: "sm" })}
-        >
-          ログアウト
-        </button>
-      </div>
-
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-medium">顧客一覧（{customers.length} 件）</h2>
+    <AppShell>
+      <PageHeader
+        title="顧客"
+        subtitle="来店・整備の起点となる顧客情報を管理します。"
+        actions={
           <button
             type="button"
             className={button({ size: "sm" })}
@@ -126,69 +113,70 @@ function CustomersPage() {
               setModal({ mode: "create" });
             }}
           >
-            新規作成
+            ＋ 新規登録
           </button>
-        </div>
+        }
+      />
 
-        {listError ? (
-          <p className="mt-2 text-sm text-red-600" role="alert">
-            {listError}
-          </p>
-        ) : null}
+      {listError ? (
+        <p className="mb-4 text-sm text-red-400" role="alert">
+          {listError}
+        </p>
+      ) : null}
 
+      <Card title="顧客一覧" count={`${customers.length} 名`}>
         {customers.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-600">顧客が登録されていません。</p>
+          <EmptyState message="顧客が登録されていません。「＋ 新規登録」から追加してください。" />
         ) : (
-          <ul className="mt-4 divide-y divide-slate-200">
+          <RowList>
             {customers.map((customer) => (
-              <li
+              <Row
                 key={customer.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3"
+                actions={
+                  <>
+                    <Link
+                      to="/customers/$id"
+                      params={{ id: customer.id }}
+                      className={button({ variant: "outline", size: "sm" })}
+                    >
+                      詳細
+                    </Link>
+                    <button
+                      type="button"
+                      className={button({ variant: "ghost", size: "sm" })}
+                      onClick={() => {
+                        setFormError(null);
+                        setModal({ mode: "edit", customer });
+                      }}
+                    >
+                      編集
+                    </button>
+                    <button
+                      type="button"
+                      className={button({ variant: "ghost", size: "sm" })}
+                      onClick={() => handleDelete(customer)}
+                    >
+                      削除
+                    </button>
+                  </>
+                }
               >
-                <div className="min-w-0">
-                  <p className="font-medium break-words">{customer.name}</p>
-                  <p className="text-sm text-slate-500 break-words">
-                    {[customer.phone, customer.mobilePhone, customer.email]
-                      .filter(Boolean)
-                      .join(" ／ ") || "連絡先未登録"}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Link
-                    to="/customers/$id"
-                    params={{ id: customer.id }}
-                    className={button({ variant: "outline", size: "sm" })}
-                  >
-                    詳細
-                  </Link>
-                  <button
-                    type="button"
-                    className={button({ variant: "outline", size: "sm" })}
-                    onClick={() => {
-                      setFormError(null);
-                      setModal({ mode: "edit", customer });
-                    }}
-                  >
-                    編集
-                  </button>
-                  <button
-                    type="button"
-                    className={button({ variant: "outline", size: "sm" })}
-                    onClick={() => handleDelete(customer)}
-                  >
-                    削除
-                  </button>
-                </div>
-              </li>
+                <p className="font-medium break-words">{customer.name}</p>
+                <p className="mt-0.5 text-sm text-ink-muted break-words">
+                  {[customer.phone, customer.mobilePhone, customer.email]
+                    .filter(Boolean)
+                    .join(" ／ ") || "連絡先未登録"}
+                </p>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
-      </section>
+      </Card>
 
       <Modal
         open={modal !== null}
         onOpenChange={(open) => !open && setModal(null)}
-        title={modal?.mode === "edit" ? "顧客を編集" : "顧客を新規作成"}
+        title={modal?.mode === "edit" ? "顧客を編集" : "顧客を新規登録"}
       >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <TextField
@@ -197,20 +185,22 @@ function CustomersPage() {
             required
             defaultValue={modal?.mode === "edit" ? modal.customer.name : ""}
           />
-          <TextField
-            name="phone"
-            label="電話番号"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.customer.phone ?? "") : ""
-            }
-          />
-          <TextField
-            name="mobilePhone"
-            label="携帯電話"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.customer.mobilePhone ?? "") : ""
-            }
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField
+              name="phone"
+              label="電話番号"
+              defaultValue={
+                modal?.mode === "edit" ? (modal.customer.phone ?? "") : ""
+              }
+            />
+            <TextField
+              name="mobilePhone"
+              label="携帯電話"
+              defaultValue={
+                modal?.mode === "edit" ? (modal.customer.mobilePhone ?? "") : ""
+              }
+            />
+          </div>
           <TextField
             name="email"
             label="メールアドレス"
@@ -219,13 +209,24 @@ function CustomersPage() {
               modal?.mode === "edit" ? (modal.customer.email ?? "") : ""
             }
           />
-          <TextField
-            name="postalCode"
-            label="郵便番号"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.customer.postalCode ?? "") : ""
-            }
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField
+              name="postalCode"
+              label="郵便番号"
+              defaultValue={
+                modal?.mode === "edit" ? (modal.customer.postalCode ?? "") : ""
+              }
+            />
+            <TextField
+              name="licenseNumber"
+              label="免許証番号"
+              defaultValue={
+                modal?.mode === "edit"
+                  ? (modal.customer.licenseNumber ?? "")
+                  : ""
+              }
+            />
+          </div>
           <TextField
             name="address"
             label="住所"
@@ -233,27 +234,22 @@ function CustomersPage() {
               modal?.mode === "edit" ? (modal.customer.address ?? "") : ""
             }
           />
-          <TextField
-            name="addressLine2"
-            label="番地以降"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.customer.addressLine2 ?? "") : ""
-            }
-          />
-          <TextField
-            name="building"
-            label="建物"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.customer.building ?? "") : ""
-            }
-          />
-          <TextField
-            name="licenseNumber"
-            label="免許証番号"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.customer.licenseNumber ?? "") : ""
-            }
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField
+              name="addressLine2"
+              label="番地以降"
+              defaultValue={
+                modal?.mode === "edit" ? (modal.customer.addressLine2 ?? "") : ""
+              }
+            />
+            <TextField
+              name="building"
+              label="建物"
+              defaultValue={
+                modal?.mode === "edit" ? (modal.customer.building ?? "") : ""
+              }
+            />
+          </div>
           <TextField
             name="note"
             label="備考"
@@ -265,16 +261,16 @@ function CustomersPage() {
           />
 
           {formError ? (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {formError}
             </p>
           ) : null}
 
           <button type="submit" className={button()} disabled={pending}>
-            {pending ? "保存中..." : "登録"}
+            {pending ? "保存中..." : "保存"}
           </button>
         </form>
       </Modal>
-    </main>
+    </AppShell>
   );
 }

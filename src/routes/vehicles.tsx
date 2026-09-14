@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, SelectField, TextField } from "~/components/ui/form";
-import { signOut } from "~/lib/auth-client";
+import {
+  AppShell,
+  Badge,
+  Card,
+  EmptyState,
+  PageHeader,
+  Row,
+  RowList,
+} from "~/components/ui/layout";
 import { vehicleInputSchema, vehicleUpdateInputSchema } from "~/lib/validation";
 import { listCustomerOptions } from "~/server/customers";
 import {
@@ -54,11 +62,6 @@ function VehiclesPage() {
 
   async function reload() {
     await router.invalidate();
-  }
-
-  async function handleSignOut() {
-    await signOut();
-    await router.navigate({ to: "/login" });
   }
 
   async function openEdit(row: VehicleRow) {
@@ -116,7 +119,11 @@ function VehiclesPage() {
   }
 
   async function handleDelete(row: VehicleRow) {
-    if (!window.confirm(`「${row.modelName}」を削除しますか？（関連する案件も削除されます）`)) {
+    if (
+      !window.confirm(
+        `「${row.modelName}」を削除しますか？（関連する案件も削除されます）`,
+      )
+    ) {
       return;
     }
     setListError(null);
@@ -134,28 +141,11 @@ function VehiclesPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm">
-            <Link to="/" className="text-slate-500 underline">
-              ← ダッシュボードへ
-            </Link>
-          </p>
-          <h1 className="text-xl font-bold">車両</h1>
-        </div>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className={button({ variant: "outline", size: "sm" })}
-        >
-          ログアウト
-        </button>
-      </div>
-
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-medium">車両一覧（{vehicles.length} 台）</h2>
+    <AppShell>
+      <PageHeader
+        title="車両"
+        subtitle="お預かりしている車両（バイク）の情報を管理します。"
+        actions={
           <button
             type="button"
             className={button({ size: "sm" })}
@@ -165,69 +155,74 @@ function VehiclesPage() {
               setModal({ mode: "create" });
             }}
           >
-            新規登録
+            ＋ 新規登録
           </button>
-        </div>
+        }
+      />
 
-        {customerOptions.length === 0 ? (
-          <p className="mt-2 text-sm text-amber-600">
-            先に「顧客」を登録してください。
-          </p>
-        ) : null}
+      {customerOptions.length === 0 ? (
+        <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
+          先に「顧客」を登録してください。車両は顧客に紐づけて管理します。
+        </p>
+      ) : null}
 
-        {listError ? (
-          <p className="mt-2 text-sm text-red-600" role="alert">
-            {listError}
-          </p>
-        ) : null}
+      {listError ? (
+        <p className="mb-4 text-sm text-red-400" role="alert">
+          {listError}
+        </p>
+      ) : null}
 
+      <Card title="車両一覧" count={`${vehicles.length} 台`}>
         {vehicles.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-600">車両が登録されていません。</p>
+          <EmptyState message="車両が登録されていません。" />
         ) : (
-          <ul className="mt-4 divide-y divide-slate-200">
+          <RowList>
             {vehicles.map((vehicle) => (
-              <li
+              <Row
                 key={vehicle.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3"
+                actions={
+                  <>
+                    <Link
+                      to="/vehicles/$id"
+                      params={{ id: vehicle.id }}
+                      className={button({ variant: "outline", size: "sm" })}
+                    >
+                      詳細
+                    </Link>
+                    <button
+                      type="button"
+                      className={button({ variant: "ghost", size: "sm" })}
+                      onClick={() => openEdit(vehicle)}
+                    >
+                      編集
+                    </button>
+                    <button
+                      type="button"
+                      className={button({ variant: "ghost", size: "sm" })}
+                      onClick={() => handleDelete(vehicle)}
+                    >
+                      削除
+                    </button>
+                  </>
+                }
               >
-                <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium break-words">{vehicle.modelName}</p>
-                  <p className="text-sm text-slate-500">
-                    {vehicle.customerName} ／ {vehicle.maker || "-"} ／ 案件{" "}
-                    {vehicle.caseCount} 件
-                    {vehicle.inspectionExpiresOn
-                      ? ` ／ 車検期限 ${vehicle.inspectionExpiresOn}`
-                      : ""}
-                  </p>
+                  {vehicle.maker ? (
+                    <Badge>{vehicle.maker}</Badge>
+                  ) : null}
                 </div>
-                <div className="flex gap-2">
-                  <Link
-                    to="/vehicles/$id"
-                    params={{ id: vehicle.id }}
-                    className={button({ variant: "outline", size: "sm" })}
-                  >
-                    詳細
-                  </Link>
-                  <button
-                    type="button"
-                    className={button({ variant: "outline", size: "sm" })}
-                    onClick={() => openEdit(vehicle)}
-                  >
-                    編集
-                  </button>
-                  <button
-                    type="button"
-                    className={button({ variant: "outline", size: "sm" })}
-                    onClick={() => handleDelete(vehicle)}
-                  >
-                    削除
-                  </button>
-                </div>
-              </li>
+                <p className="mt-0.5 text-sm text-ink-muted break-words">
+                  {vehicle.customerName} ／ 案件 {vehicle.caseCount} 件
+                  {vehicle.inspectionExpiresOn
+                    ? ` ／ 車検期限 ${vehicle.inspectionExpiresOn}`
+                    : ""}
+                </p>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
-      </section>
+      </Card>
 
       <Modal
         open={modal !== null}
@@ -240,7 +235,9 @@ function VehiclesPage() {
             label="所有者"
             options={customerSelectOptions}
             defaultValue={
-              modal?.mode === "edit" ? modal.vehicle.customerId : customerSelectOptions[0]?.value
+              modal?.mode === "edit"
+                ? modal.vehicle.customerId
+                : customerSelectOptions[0]?.value
             }
           />
           <TextField
@@ -249,61 +246,73 @@ function VehiclesPage() {
             required
             defaultValue={modal?.mode === "edit" ? modal.vehicle.modelName : ""}
           />
-          <TextField
-            name="vehicleNumber"
-            label="車両番号"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.vehicle.vehicleNumber ?? "") : ""
-            }
-          />
-          <SelectField
-            name="maker"
-            label="メーカー"
-            options={makerOptions.map((v) => ({ value: v, label: v }))}
-            defaultValue={modal?.mode === "edit" ? (modal.vehicle.maker ?? "") : ""}
-          />
-          <TextField
-            name="displacement"
-            label="排気量（cc）"
-            defaultValue={
-              modal?.mode === "edit" && modal.vehicle.displacement != null
-                ? String(modal.vehicle.displacement)
-                : ""
-            }
-          />
-          <TextField
-            name="modelYear"
-            label="年式"
-            defaultValue={
-              modal?.mode === "edit" && modal.vehicle.modelYear != null
-                ? String(modal.vehicle.modelYear)
-                : ""
-            }
-          />
-          <SelectField
-            name="color"
-            label="色"
-            options={colorOptions.map((v) => ({ value: v, label: v }))}
-            defaultValue={modal?.mode === "edit" ? (modal.vehicle.color ?? "") : ""}
-          />
-          <TextField
-            name="registeredOn"
-            label="登録日"
-            type="date"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.vehicle.registeredOn ?? "") : ""
-            }
-          />
-          <TextField
-            name="inspectionExpiresOn"
-            label="車検期限"
-            type="date"
-            defaultValue={
-              modal?.mode === "edit"
-                ? (modal.vehicle.inspectionExpiresOn ?? "")
-                : ""
-            }
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField
+              name="vehicleNumber"
+              label="車両番号"
+              defaultValue={
+                modal?.mode === "edit"
+                  ? (modal.vehicle.vehicleNumber ?? "")
+                  : ""
+              }
+            />
+            <SelectField
+              name="maker"
+              label="メーカー"
+              options={makerOptions.map((v) => ({ value: v, label: v }))}
+              defaultValue={
+                modal?.mode === "edit" ? (modal.vehicle.maker ?? "") : ""
+              }
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <TextField
+              name="displacement"
+              label="排気量(cc)"
+              defaultValue={
+                modal?.mode === "edit" && modal.vehicle.displacement != null
+                  ? String(modal.vehicle.displacement)
+                  : ""
+              }
+            />
+            <TextField
+              name="modelYear"
+              label="年式"
+              defaultValue={
+                modal?.mode === "edit" && modal.vehicle.modelYear != null
+                  ? String(modal.vehicle.modelYear)
+                  : ""
+              }
+            />
+            <SelectField
+              name="color"
+              label="色"
+              options={colorOptions.map((v) => ({ value: v, label: v }))}
+              defaultValue={
+                modal?.mode === "edit" ? (modal.vehicle.color ?? "") : ""
+              }
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField
+              name="registeredOn"
+              label="登録日"
+              type="date"
+              defaultValue={
+                modal?.mode === "edit" ? (modal.vehicle.registeredOn ?? "") : ""
+              }
+            />
+            <TextField
+              name="inspectionExpiresOn"
+              label="車検期限"
+              type="date"
+              defaultValue={
+                modal?.mode === "edit"
+                  ? (modal.vehicle.inspectionExpiresOn ?? "")
+                  : ""
+              }
+            />
+          </div>
           <TextField
             name="insuranceInfo"
             label="保険情報"
@@ -332,20 +341,22 @@ function VehiclesPage() {
             label="備考"
             multiline
             rows={3}
-            defaultValue={modal?.mode === "edit" ? (modal.vehicle.note ?? "") : ""}
+            defaultValue={
+              modal?.mode === "edit" ? (modal.vehicle.note ?? "") : ""
+            }
           />
 
           {formError ? (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {formError}
             </p>
           ) : null}
 
           <button type="submit" className={button()} disabled={pending}>
-            {pending ? "保存中..." : "登録"}
+            {pending ? "保存中..." : "保存"}
           </button>
         </form>
       </Modal>
-    </main>
+    </AppShell>
   );
 }

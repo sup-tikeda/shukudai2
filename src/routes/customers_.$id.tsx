@@ -1,5 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { button } from "~/components/ui/form";
+import {
+  AppShell,
+  Card,
+  DetailItem,
+  DetailList,
+  EmptyState,
+  PageHeader,
+  Row,
+  RowList,
+} from "~/components/ui/layout";
 import { getCustomer } from "~/server/customers";
 import { listVehicles } from "~/server/vehicles";
 
@@ -20,86 +30,84 @@ export const Route = createFileRoute("/customers_/$id")({
 function CustomerDetailPage() {
   const { customer, vehicles } = Route.useLoaderData();
 
+  const address =
+    [
+      customer.postalCode ? `〒${customer.postalCode}` : "",
+      customer.address,
+      customer.addressLine2,
+      customer.building,
+    ]
+      .filter(Boolean)
+      .join(" ") || "";
+
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-8">
-      <p className="text-sm">
-        <Link to="/customers" className="text-slate-500 underline">
-          ← 顧客一覧へ
-        </Link>
-      </p>
-      <h1 className="mt-1 text-xl font-bold">{customer.name}</h1>
+    <AppShell>
+      <PageHeader
+        title={customer.name}
+        subtitle={`保有車両 ${vehicles.length} 台`}
+        backTo="/customers"
+        backLabel="顧客一覧"
+      />
 
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <h2 className="font-medium">基本情報</h2>
-        <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-slate-500">電話番号</dt>
-            <dd>{customer.phone || "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">携帯電話</dt>
-            <dd>{customer.mobilePhone || "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">メールアドレス</dt>
-            <dd>{customer.email || "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">免許証番号</dt>
-            <dd>{customer.licenseNumber || "-"}</dd>
-          </div>
-          <div className="sm:col-span-2">
-            <dt className="text-slate-500">住所</dt>
-            <dd>
-              {[customer.postalCode, customer.address, customer.addressLine2, customer.building]
-                .filter(Boolean)
-                .join(" ") || "-"}
-            </dd>
-          </div>
-          {customer.note ? (
-            <div className="sm:col-span-2">
-              <dt className="text-slate-500">備考</dt>
-              <dd className="whitespace-pre-wrap">{customer.note}</dd>
-            </div>
-          ) : null}
-        </dl>
-      </section>
+      <Card title="基本情報">
+        <DetailList>
+          <DetailItem label="電話番号">{customer.phone}</DetailItem>
+          <DetailItem label="携帯電話">{customer.mobilePhone}</DetailItem>
+          <DetailItem label="メールアドレス">{customer.email}</DetailItem>
+          <DetailItem label="免許証番号">{customer.licenseNumber}</DetailItem>
+          <DetailItem label="住所" wide>
+            {address}
+          </DetailItem>
+          <DetailItem label="備考" wide>
+            {customer.note}
+          </DetailItem>
+        </DetailList>
+      </Card>
 
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="font-medium">保有車両（{vehicles.length} 台）</h2>
-          <Link to="/vehicles" className={button({ variant: "outline", size: "sm" })}>
-            車両を登録
-          </Link>
-        </div>
-
-        {vehicles.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-600">保有車両はありません。</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-slate-200">
-            {vehicles.map((vehicle) => (
-              <li
-                key={vehicle.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="font-medium break-words">{vehicle.modelName}</p>
-                  <p className="text-sm text-slate-500">
-                    {vehicle.maker || "-"} ／ 案件 {vehicle.caseCount} 件
-                  </p>
-                </div>
-                <Link
-                  to="/vehicles/$id"
-                  params={{ id: vehicle.id }}
-                  className={button({ variant: "outline", size: "sm" })}
+      <div className="mt-6">
+        <Card
+          title="保有車両"
+          count={`${vehicles.length} 台`}
+          actions={
+            <Link
+              to="/vehicles"
+              className={button({ variant: "outline", size: "sm" })}
+            >
+              車両を登録
+            </Link>
+          }
+        >
+          {vehicles.length === 0 ? (
+            <EmptyState message="保有車両はありません。" />
+          ) : (
+            <RowList>
+              {vehicles.map((vehicle) => (
+                <Row
+                  key={vehicle.id}
+                  actions={
+                    <Link
+                      to="/vehicles/$id"
+                      params={{ id: vehicle.id }}
+                      className={button({ variant: "outline", size: "sm" })}
+                    >
+                      詳細
+                    </Link>
+                  }
                 >
-                  詳細
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
+                  <p className="font-medium break-words">{vehicle.modelName}</p>
+                  <p className="mt-0.5 text-sm text-ink-muted">
+                    {vehicle.maker || "メーカー未登録"} ／ 案件{" "}
+                    {vehicle.caseCount} 件
+                    {vehicle.inspectionExpiresOn
+                      ? ` ／ 車検期限 ${vehicle.inspectionExpiresOn}`
+                      : ""}
+                  </p>
+                </Row>
+              ))}
+            </RowList>
+          )}
+        </Card>
+      </div>
+    </AppShell>
   );
 }

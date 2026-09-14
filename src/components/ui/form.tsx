@@ -4,11 +4,19 @@ import { Field } from "@ark-ui/react/field";
 import { tv } from "tailwind-variants";
 
 export const button = tv({
-  base: "inline-flex items-center justify-center rounded-md font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+  base: "inline-flex items-center justify-center gap-1.5 rounded-md font-medium tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40",
   variants: {
     variant: {
-      primary: "bg-slate-900 text-white hover:bg-slate-700",
-      outline: "border border-slate-300 bg-white text-slate-900 hover:bg-slate-100",
+      // 主操作。工具のオレンジで、画面内で1番目立たせたいものだけに使う
+      primary: "bg-accent text-accent-ink hover:bg-accent-strong",
+      // 併置する副操作
+      outline:
+        "border border-line bg-surface-raised text-ink hover:border-ink-faint hover:bg-line",
+      // 一覧の行内など、枠線を出すとうるさい場所
+      ghost: "text-ink-muted hover:bg-surface-raised hover:text-ink",
+      // 削除など戻せない操作
+      danger:
+        "border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20",
     },
     size: {
       md: "h-10 px-4 text-sm",
@@ -19,11 +27,13 @@ export const button = tv({
 });
 
 const control = tv({
-  base: "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500 data-[invalid]:border-red-500",
+  base: "w-full rounded-md border border-line bg-shell px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent data-[invalid]:border-red-500",
 });
 
-const label = tv({ base: "text-sm font-medium text-slate-700" });
-const errorText = tv({ base: "text-xs text-red-600" });
+const label = tv({
+  base: "text-xs font-medium tracking-wide text-ink-muted uppercase",
+});
+const errorText = tv({ base: "text-xs text-red-400" });
 
 type TextFieldProps = {
   name: string;
@@ -58,11 +68,11 @@ export function TextField({
     <Field.Root
       required={required}
       invalid={invalid}
-      className="flex flex-col gap-1"
+      className="flex flex-col gap-1.5"
     >
       <Field.Label className={label()}>
         {labelText}
-        <Field.RequiredIndicator className="ml-1 text-red-600" />
+        <Field.RequiredIndicator className="ml-1 text-accent" />
       </Field.Label>
       {multiline ? (
         <Field.Textarea
@@ -111,10 +121,10 @@ export function SelectField({
   required,
 }: SelectFieldProps) {
   return (
-    <Field.Root required={required} className="flex flex-col gap-1">
+    <Field.Root required={required} className="flex flex-col gap-1.5">
       <Field.Label className={label()}>
         {labelText}
-        <Field.RequiredIndicator className="ml-1 text-red-600" />
+        <Field.RequiredIndicator className="ml-1 text-accent" />
       </Field.Label>
       <select name={name} defaultValue={defaultValue} className={control()}>
         {options.map((option) => (
@@ -144,18 +154,20 @@ export function Modal({
       open={open}
       onOpenChange={(details) => onOpenChange(details.open)}
     >
-      <Dialog.Backdrop className="fixed inset-0 bg-black/40" />
-      <Dialog.Positioner className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Content className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-          <div className="flex items-center justify-between gap-2">
-            <Dialog.Title className="text-lg font-bold">{title}</Dialog.Title>
+      <Dialog.Backdrop className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+      <Dialog.Positioner className="fixed inset-0 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
+        <Dialog.Content className="my-auto w-full max-w-md rounded-xl border border-line bg-surface shadow-2xl shadow-black/50">
+          <div className="flex items-center justify-between gap-2 border-b border-line px-6 py-4">
+            <Dialog.Title className="text-base font-bold text-ink">
+              {title}
+            </Dialog.Title>
             <Dialog.CloseTrigger
-              className={button({ variant: "outline", size: "sm" })}
+              className={button({ variant: "ghost", size: "sm" })}
             >
               閉じる
             </Dialog.CloseTrigger>
           </div>
-          <div className="mt-4">{children}</div>
+          <div className="px-6 py-5">{children}</div>
         </Dialog.Content>
       </Dialog.Positioner>
     </Dialog.Root>
@@ -172,10 +184,10 @@ export function FormCard({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-lg rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h1 className="text-xl font-bold">{title}</h1>
+    <div className="mx-auto w-full max-w-md rounded-xl border border-line bg-surface p-8 shadow-2xl shadow-black/40">
+      <h1 className="text-xl font-bold text-ink">{title}</h1>
       {description ? (
-        <p className="mt-1 text-sm text-slate-600">{description}</p>
+        <p className="mt-1 text-sm text-ink-muted">{description}</p>
       ) : null}
       <div className="mt-6">{children}</div>
     </div>

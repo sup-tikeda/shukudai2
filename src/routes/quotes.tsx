@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, SelectField, TextField } from "~/components/ui/form";
-import { signOut } from "~/lib/auth-client";
+import {
+  AppShell,
+  Badge,
+  Card,
+  docTypeTone,
+  EmptyState,
+  PageHeader,
+  Row,
+  RowList,
+} from "~/components/ui/layout";
 import { quoteDocTypeValues, quoteInputSchema } from "~/lib/validation";
 import { listCaseOptions } from "~/server/cases";
 import { createQuote, listQuotes } from "~/server/quotes";
@@ -24,11 +33,6 @@ function QuotesPage() {
 
   async function reload() {
     await router.invalidate();
-  }
-
-  async function handleSignOut() {
-    await signOut();
-    await router.navigate({ to: "/login" });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -65,28 +69,11 @@ function QuotesPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm">
-            <Link to="/" className="text-slate-500 underline">
-              ← ダッシュボードへ
-            </Link>
-          </p>
-          <h1 className="text-xl font-bold">見積・請求</h1>
-        </div>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className={button({ variant: "outline", size: "sm" })}
-        >
-          ログアウト
-        </button>
-      </div>
-
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-medium">一覧（{quotes.length} 件）</h2>
+    <AppShell>
+      <PageHeader
+        title="見積・請求"
+        subtitle="案件ごとに見積書・請求書を作成し、明細から金額を自動計算します。"
+        actions={
           <button
             type="button"
             className={button({ size: "sm" })}
@@ -96,52 +83,59 @@ function QuotesPage() {
               setModalOpen(true);
             }}
           >
-            新規作成
+            ＋ 新規作成
           </button>
-        </div>
+        }
+      />
 
-        {caseOptions.length === 0 ? (
-          <p className="mt-2 text-sm text-amber-600">
-            先に「案件」を登録してください。
-          </p>
-        ) : null}
+      {caseOptions.length === 0 ? (
+        <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
+          先に「案件」を登録してください。見積・請求は案件に紐づけて作成します。
+        </p>
+      ) : null}
 
+      <Card title="見積・請求一覧" count={`${quotes.length} 件`}>
         {quotes.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-600">
-            見積・請求が登録されていません。
-          </p>
+          <EmptyState message="見積・請求が登録されていません。" />
         ) : (
-          <ul className="mt-4 divide-y divide-slate-200">
+          <RowList>
             {quotes.map((q) => (
-              <li
+              <Row
                 key={q.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3"
+                actions={
+                  <Link
+                    to="/quotes/$id"
+                    params={{ id: q.id }}
+                    className={button({ variant: "outline", size: "sm" })}
+                  >
+                    詳細
+                  </Link>
+                }
               >
-                <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
                   <p className="font-medium break-words">
-                    {q.docType}
-                    {q.title ? `：${q.title}` : ""}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {q.customerName} ／ {q.vehicleName} ／ {q.caseTitle}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    数量 {q.quantity} ／ 税込合計 {q.total.toLocaleString()}円 ／
-                    作成日 {q.createdOn}
+                    {q.title || "（タイトル未設定）"}
                   </p>
                 </div>
-                <Link
-                  to="/quotes/$id"
-                  params={{ id: q.id }}
-                  className={button({ variant: "outline", size: "sm" })}
-                >
-                  詳細
-                </Link>
-              </li>
+                <p className="mt-0.5 text-sm text-ink-muted break-words">
+                  {q.customerName} ／ {q.vehicleName} ／ {q.caseTitle}
+                </p>
+                <p className="mt-1 text-sm tabular-nums">
+                  <span className="font-bold text-accent">
+                    ¥{q.total.toLocaleString()}
+                  </span>
+                  <span className="text-ink-faint">
+                    {" "}
+                    （税抜 ¥{q.subtotal.toLocaleString()}／数量 {q.quantity}）
+                    ／ 作成日 {q.createdOn}
+                  </span>
+                </p>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
-      </section>
+      </Card>
 
       <Modal
         open={modalOpen}
@@ -155,19 +149,21 @@ function QuotesPage() {
             options={caseSelectOptions}
             defaultValue={caseSelectOptions[0]?.value}
           />
-          <SelectField
-            name="docType"
-            label="種別"
-            options={quoteDocTypeValues.map((v) => ({ value: v, label: v }))}
-            defaultValue="見積書"
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectField
+              name="docType"
+              label="種別"
+              options={quoteDocTypeValues.map((v) => ({ value: v, label: v }))}
+              defaultValue="見積書"
+            />
+            <TextField name="taxRate" label="消費税率(%)" defaultValue="10" />
+          </div>
           <TextField name="title" label="タイトル" />
-          <TextField name="taxRate" label="消費税率（%）" defaultValue="10" />
           <TextField name="sentOn" label="送付日" type="date" />
           <TextField name="note" label="通信欄" multiline rows={3} />
 
           {formError ? (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {formError}
             </p>
           ) : null}
@@ -177,6 +173,6 @@ function QuotesPage() {
           </button>
         </form>
       </Modal>
-    </main>
+    </AppShell>
   );
 }

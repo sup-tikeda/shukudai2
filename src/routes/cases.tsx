@@ -1,9 +1,28 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, SelectField, TextField } from "~/components/ui/form";
-import { signOut } from "~/lib/auth-client";
-import { caseInputSchema, caseStatusValues, caseUpdateInputSchema } from "~/lib/validation";
-import { createCase, deleteCase, getCase, listCases, updateCase } from "~/server/cases";
+import {
+  AppShell,
+  Badge,
+  Card,
+  EmptyState,
+  PageHeader,
+  Row,
+  RowList,
+  statusTone,
+} from "~/components/ui/layout";
+import {
+  caseInputSchema,
+  caseStatusValues,
+  caseUpdateInputSchema,
+} from "~/lib/validation";
+import {
+  createCase,
+  deleteCase,
+  getCase,
+  listCases,
+  updateCase,
+} from "~/server/cases";
 import { listVehicleOptions } from "~/server/vehicles";
 
 export const Route = createFileRoute("/cases")({
@@ -32,11 +51,6 @@ function CasesPage() {
 
   async function reload() {
     await router.invalidate();
-  }
-
-  async function handleSignOut() {
-    await signOut();
-    await router.navigate({ to: "/login" });
   }
 
   async function openEdit(row: CaseRow) {
@@ -94,7 +108,11 @@ function CasesPage() {
   }
 
   async function handleDelete(row: CaseRow) {
-    if (!window.confirm(`「${row.title}」を削除しますか？（関連する見積・請求も削除されます）`)) {
+    if (
+      !window.confirm(
+        `「${row.title}」を削除しますか？（関連する見積・請求も削除されます）`,
+      )
+    ) {
       return;
     }
     setListError(null);
@@ -112,28 +130,11 @@ function CasesPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm">
-            <Link to="/" className="text-slate-500 underline">
-              ← ダッシュボードへ
-            </Link>
-          </p>
-          <h1 className="text-xl font-bold">案件</h1>
-        </div>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className={button({ variant: "outline", size: "sm" })}
-        >
-          ログアウト
-        </button>
-      </div>
-
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-medium">案件一覧（{cases.length} 件）</h2>
+    <AppShell>
+      <PageHeader
+        title="案件"
+        subtitle="整備・修理などの作業案件と進行状況を管理します。"
+        actions={
           <button
             type="button"
             className={button({ size: "sm" })}
@@ -143,69 +144,73 @@ function CasesPage() {
               setModal({ mode: "create" });
             }}
           >
-            新規作成
+            ＋ 新規作成
           </button>
-        </div>
+        }
+      />
 
-        {vehicleOptions.length === 0 ? (
-          <p className="mt-2 text-sm text-amber-600">
-            先に「車両」を登録してください。
-          </p>
-        ) : null}
+      {vehicleOptions.length === 0 ? (
+        <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
+          先に「車両」を登録してください。案件は車両に紐づけて管理します。
+        </p>
+      ) : null}
 
-        {listError ? (
-          <p className="mt-2 text-sm text-red-600" role="alert">
-            {listError}
-          </p>
-        ) : null}
+      {listError ? (
+        <p className="mb-4 text-sm text-red-400" role="alert">
+          {listError}
+        </p>
+      ) : null}
 
+      <Card title="案件一覧" count={`${cases.length} 件`}>
         {cases.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-600">案件が登録されていません。</p>
+          <EmptyState message="案件が登録されていません。" />
         ) : (
-          <ul className="mt-4 divide-y divide-slate-200">
+          <RowList>
             {cases.map((c) => (
-              <li
+              <Row
                 key={c.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3"
+                actions={
+                  <>
+                    <Link
+                      to="/cases/$id"
+                      params={{ id: c.id }}
+                      className={button({ variant: "outline", size: "sm" })}
+                    >
+                      詳細
+                    </Link>
+                    <button
+                      type="button"
+                      className={button({ variant: "ghost", size: "sm" })}
+                      onClick={() => openEdit(c)}
+                    >
+                      編集
+                    </button>
+                    <button
+                      type="button"
+                      className={button({ variant: "ghost", size: "sm" })}
+                      onClick={() => handleDelete(c)}
+                    >
+                      削除
+                    </button>
+                  </>
+                }
               >
-                <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium break-words">{c.title}</p>
-                  <p className="text-sm text-slate-500">
-                    {c.customerName} ／ {c.vehicleName} ／ {c.status} ／ 担当:{" "}
-                    {c.assignee || "-"}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {c.plannedStartOn || "-"} 〜 {c.plannedEndOn || "-"}
-                  </p>
+                  <Badge tone={statusTone(c.status)}>{c.status}</Badge>
                 </div>
-                <div className="flex gap-2">
-                  <Link
-                    to="/cases/$id"
-                    params={{ id: c.id }}
-                    className={button({ variant: "outline", size: "sm" })}
-                  >
-                    詳細
-                  </Link>
-                  <button
-                    type="button"
-                    className={button({ variant: "outline", size: "sm" })}
-                    onClick={() => openEdit(c)}
-                  >
-                    編集
-                  </button>
-                  <button
-                    type="button"
-                    className={button({ variant: "outline", size: "sm" })}
-                    onClick={() => handleDelete(c)}
-                  >
-                    削除
-                  </button>
-                </div>
-              </li>
+                <p className="mt-0.5 text-sm text-ink-muted break-words">
+                  {c.customerName} ／ {c.vehicleName} ／ 担当:{" "}
+                  {c.assignee || "未定"}
+                </p>
+                <p className="mt-0.5 text-sm text-ink-faint tabular-nums">
+                  {c.plannedStartOn || "-"} 〜 {c.plannedEndOn || "-"}
+                </p>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
-      </section>
+      </Card>
 
       <Modal
         open={modal !== null}
@@ -218,7 +223,9 @@ function CasesPage() {
             label="対象車両"
             options={vehicleSelectOptions}
             defaultValue={
-              modal?.mode === "edit" ? modal.item.vehicleId : vehicleSelectOptions[0]?.value
+              modal?.mode === "edit"
+                ? modal.item.vehicleId
+                : vehicleSelectOptions[0]?.value
             }
           />
           <TextField
@@ -227,44 +234,50 @@ function CasesPage() {
             required
             defaultValue={modal?.mode === "edit" ? modal.item.title : ""}
           />
-          <SelectField
-            name="status"
-            label="ステータス"
-            options={caseStatusValues.map((v) => ({ value: v, label: v }))}
-            defaultValue={modal?.mode === "edit" ? modal.item.status : "未作業"}
-          />
-          <SelectField
-            name="assignee"
-            label="担当者"
-            options={assigneeOptions.map((v) => ({ value: v, label: v }))}
-            defaultValue={modal?.mode === "edit" ? (modal.item.assignee ?? "") : ""}
-          />
-          <TextField
-            name="plannedStartOn"
-            label="作業：開始予定日"
-            type="date"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.item.plannedStartOn ?? "") : ""
-            }
-          />
-          <TextField
-            name="plannedEndOn"
-            label="作業：終了予定日"
-            type="date"
-            defaultValue={
-              modal?.mode === "edit" ? (modal.item.plannedEndOn ?? "") : ""
-            }
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectField
+              name="status"
+              label="ステータス"
+              options={caseStatusValues.map((v) => ({ value: v, label: v }))}
+              defaultValue={modal?.mode === "edit" ? modal.item.status : "未作業"}
+            />
+            <SelectField
+              name="assignee"
+              label="担当者"
+              options={assigneeOptions.map((v) => ({ value: v, label: v }))}
+              defaultValue={
+                modal?.mode === "edit" ? (modal.item.assignee ?? "") : ""
+              }
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField
+              name="plannedStartOn"
+              label="開始予定日"
+              type="date"
+              defaultValue={
+                modal?.mode === "edit" ? (modal.item.plannedStartOn ?? "") : ""
+              }
+            />
+            <TextField
+              name="plannedEndOn"
+              label="終了予定日"
+              type="date"
+              defaultValue={
+                modal?.mode === "edit" ? (modal.item.plannedEndOn ?? "") : ""
+              }
+            />
+          </div>
           <TextField
             name="content"
-            label="案件：内容"
+            label="案件内容"
             multiline
             rows={3}
             defaultValue={modal?.mode === "edit" ? (modal.item.content ?? "") : ""}
           />
           <TextField
             name="workContent"
-            label="作業：内容"
+            label="作業内容"
             multiline
             rows={3}
             defaultValue={
@@ -275,21 +288,21 @@ function CasesPage() {
             name="note"
             label="備考"
             multiline
-            rows={3}
+            rows={2}
             defaultValue={modal?.mode === "edit" ? (modal.item.note ?? "") : ""}
           />
 
           {formError ? (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {formError}
             </p>
           ) : null}
 
           <button type="submit" className={button()} disabled={pending}>
-            {pending ? "保存中..." : "登録"}
+            {pending ? "保存中..." : "保存"}
           </button>
         </form>
       </Modal>
-    </main>
+    </AppShell>
   );
 }

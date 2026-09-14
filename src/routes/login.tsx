@@ -52,8 +52,16 @@ function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center p-4 sm:p-8">
-      <FormCard title="ログイン" description="社内アカウントでログインします。">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-shell p-4 sm:p-8">
+      {/* ログイン前にも店名が分かるよう、ヘッダーと同じブランド表示を置く */}
+      <div className="flex items-center gap-2">
+        <span className="h-6 w-1.5 rounded-full bg-accent" />
+        <span className="text-lg font-bold tracking-widest text-ink uppercase">
+          Bike Shop
+        </span>
+      </div>
+
+      <FormCard title="ログイン" description="店舗管理システムにログインします。">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <TextField
             name="username"
@@ -74,7 +82,7 @@ function LoginPage() {
             error={errors.password}
           />
           {formError ? (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {formError}
             </p>
           ) : null}

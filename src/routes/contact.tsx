@@ -46,7 +46,7 @@ function ContactPage() {
   }
 
   return (
-    <main className="min-h-screen p-8">
+    <main className="flex min-h-screen items-center justify-center bg-shell p-4 sm:p-8">
       <FormCard
         title="お問い合わせ"
         description="内容を確認のうえ、担当者よりご連絡します。"
@@ -84,10 +84,10 @@ function ContactPage() {
           />
 
           {status === "done" ? (
-            <p className="text-sm text-green-700">送信しました。</p>
+            <p className="text-sm text-emerald-400">送信しました。</p>
           ) : null}
           {status === "error" ? (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-red-400">
               送信に失敗しました。時間をおいて再度お試しください。
             </p>
           ) : null}

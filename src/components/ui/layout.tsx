@@ -1,0 +1,261 @@
+import type { ReactNode } from "react";
+import { Link, useRouter } from "@tanstack/react-router";
+import { tv } from "tailwind-variants";
+import { button } from "~/components/ui/form";
+import { signOut } from "~/lib/auth-client";
+
+/** 画面上部の固定ナビ。各画面から「ダッシュボードへ戻る」導線を無くし、常に全画面へ移動できるようにする。 */
+const navLinks = [
+  { to: "/customers", label: "顧客" },
+  { to: "/vehicles", label: "車両" },
+  { to: "/cases", label: "案件" },
+  { to: "/quotes", label: "見積・請求" },
+] as const;
+
+const navLink = tv({
+  base: "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+  variants: {
+    active: {
+      true: "bg-accent/15 text-accent",
+      false: "text-ink-muted hover:bg-surface-raised hover:text-ink",
+    },
+  },
+});
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const router = useRouter();
+
+  async function handleSignOut() {
+    await signOut();
+    await router.navigate({ to: "/login" });
+  }
+
+  return (
+    <div className="min-h-screen bg-shell text-ink">
+      <header className="sticky top-0 z-10 border-b border-line bg-shell/90 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+          <Link to="/" className="flex items-center gap-2">
+            {/* ブランド表示。左のオレンジの帯が全画面共通の目印になる */}
+            <span className="h-5 w-1.5 rounded-full bg-accent" />
+            <span className="text-sm font-bold tracking-widest text-ink uppercase">
+              Bike Shop
+            </span>
+          </Link>
+
+          <nav className="flex flex-1 flex-wrap items-center gap-1">
+            {navLinks.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={navLink({ active: false })}
+                activeProps={{ className: navLink({ active: true }) }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className={button({ variant: "ghost", size: "sm" })}
+          >
+            ログアウト
+          </button>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">{children}</main>
+    </div>
+  );
+}
+
+/** 画面の見出し。右側に主操作ボタンなどを置ける。 */
+export function PageHeader({
+  title,
+  subtitle,
+  backTo,
+  backLabel,
+  actions,
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  backTo?: string;
+  backLabel?: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="min-w-0">
+        {backTo ? (
+          <Link
+            to={backTo}
+            className="text-xs font-medium tracking-wide text-ink-faint uppercase transition-colors hover:text-accent"
+          >
+            ← {backLabel}
+          </Link>
+        ) : null}
+        <h1 className="mt-1 text-2xl font-bold tracking-tight break-words">
+          {title}
+        </h1>
+        {subtitle ? (
+          <p className="mt-1 text-sm text-ink-muted break-words">{subtitle}</p>
+        ) : null}
+      </div>
+      {actions ? <div className="flex gap-2">{actions}</div> : null}
+    </div>
+  );
+}
+
+/** 情報のまとまり。一覧・詳細のどちらでも使う土台。 */
+export function Card({
+  title,
+  count,
+  actions,
+  children,
+}: {
+  title?: ReactNode;
+  count?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-xl border border-line bg-surface">
+      {title ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3.5">
+          <h2 className="flex items-baseline gap-2 text-sm font-bold tracking-wide">
+            {title}
+            {count !== undefined ? (
+              <span className="text-xs font-normal text-ink-faint">
+                {count}
+              </span>
+            ) : null}
+          </h2>
+          {actions ? <div className="flex gap-2">{actions}</div> : null}
+        </div>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+/** 一覧の1行。左に内容、右に操作ボタンを置く。 */
+export function Row({
+  children,
+  actions,
+}: {
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 transition-colors last:border-b-0 hover:bg-surface-raised">
+      <div className="min-w-0 flex-1">{children}</div>
+      {actions ? <div className="flex shrink-0 gap-2">{actions}</div> : null}
+    </li>
+  );
+}
+
+export function RowList({ children }: { children: ReactNode }) {
+  return <ul>{children}</ul>;
+}
+
+/** 一覧が空のときの案内。 */
+export function EmptyState({ message }: { message: string }) {
+  return (
+    <p className="px-5 py-10 text-center text-sm text-ink-faint">{message}</p>
+  );
+}
+
+const badge = tv({
+  base: "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+  variants: {
+    tone: {
+      neutral: "bg-surface-raised text-ink-muted ring-1 ring-line ring-inset",
+      accent: "bg-accent/15 text-accent ring-1 ring-accent/30 ring-inset",
+      done: "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30 ring-inset",
+      info: "bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/30 ring-inset",
+    },
+  },
+  defaultVariants: { tone: "neutral" },
+});
+
+type BadgeTone = "neutral" | "accent" | "done" | "info";
+
+export function Badge({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone?: BadgeTone;
+}) {
+  return <span className={badge({ tone })}>{children}</span>;
+}
+
+/** 案件ステータスの色分け。作業中はアクセント、完了は緑、未着手は無彩色。 */
+export function statusTone(status: string): BadgeTone {
+  if (status === "作業中") return "accent";
+  if (status === "完了済み") return "done";
+  return "neutral";
+}
+
+/** 見積書と請求書を見分けやすくする。 */
+export function docTypeTone(docType: string): BadgeTone {
+  return docType === "請求書" ? "accent" : "info";
+}
+
+/** 詳細画面の項目。値が無いときは「-」を出す。 */
+export function DetailItem({
+  label,
+  children,
+  wide,
+}: {
+  label: string;
+  children?: ReactNode;
+  wide?: boolean;
+}) {
+  return (
+    <div className={wide ? "sm:col-span-2" : undefined}>
+      <dt className="text-xs font-medium tracking-wide text-ink-faint uppercase">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-sm break-words whitespace-pre-wrap">
+        {children || <span className="text-ink-faint">-</span>}
+      </dd>
+    </div>
+  );
+}
+
+export function DetailList({ children }: { children: ReactNode }) {
+  return (
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-2">
+      {children}
+    </dl>
+  );
+}
+
+/** ダッシュボードの数値タイル。 */
+export function StatTile({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: ReactNode;
+  unit?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-surface px-4 py-3">
+      <p className="text-xs font-medium tracking-wide text-ink-faint uppercase">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-bold tabular-nums">
+        {value}
+        {unit ? (
+          <span className="ml-1 text-sm font-normal text-ink-muted">
+            {unit}
+          </span>
+        ) : null}
+      </p>
+    </div>
+  );
+}

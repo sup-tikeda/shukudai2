@@ -2,6 +2,16 @@ import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, TextField } from "~/components/ui/form";
 import {
+  AppShell,
+  Badge,
+  Card,
+  docTypeTone,
+  EmptyState,
+  PageHeader,
+  Row,
+  RowList,
+} from "~/components/ui/layout";
+import {
   quoteItemInputSchema,
   quoteItemUpdateInputSchema,
 } from "~/lib/validation";
@@ -24,7 +34,6 @@ type QuoteItemRow = QuoteDetail["items"][number];
 function QuoteDetailPage() {
   const quote = Route.useLoaderData();
   const router = useRouter();
-  const navigate = router.navigate;
 
   const [modal, setModal] = useState<
     { mode: "create" } | { mode: "edit"; item: QuoteItemRow } | null
@@ -105,132 +114,155 @@ function QuoteDetailPage() {
     }
     try {
       await deleteQuote({ data: { id: quote.id } });
-      await navigate({ to: "/quotes" });
+      await router.navigate({ to: "/quotes" });
     } catch {
       setListError("削除に失敗しました。");
     }
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm">
-            <Link to="/quotes" className="text-slate-500 underline">
-              ← 見積・請求一覧へ
-            </Link>
-          </p>
-          <h1 className="mt-1 text-xl font-bold">
-            {quote.docType}
-            {quote.title ? `：${quote.title}` : ""}
-          </h1>
-          <p className="text-sm text-slate-500">
+    <AppShell>
+      <PageHeader
+        title={
+          <span className="flex flex-wrap items-center gap-3">
+            <Badge tone={docTypeTone(quote.docType)}>{quote.docType}</Badge>
+            {quote.title || "（タイトル未設定）"}
+          </span>
+        }
+        backTo="/quotes"
+        backLabel="見積・請求一覧"
+        subtitle={
+          <>
             {quote.customerName} ／{" "}
-            <Link to="/cases/$id" params={{ id: quote.caseId }} className="underline">
+            <Link
+              to="/cases/$id"
+              params={{ id: quote.caseId }}
+              className="text-accent underline underline-offset-4"
+            >
               {quote.caseTitle}
             </Link>{" "}
             ／ {quote.vehicleName}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleDeleteQuote}
-          className={button({ variant: "outline", size: "sm" })}
-        >
-          この{quote.docType}を削除
-        </button>
-      </div>
+          </>
+        }
+        actions={
+          <button
+            type="button"
+            onClick={handleDeleteQuote}
+            className={button({ variant: "danger", size: "sm" })}
+          >
+            削除
+          </button>
+        }
+      />
 
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <h2 className="font-medium">集計</h2>
-        <dl className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-slate-500">数量</dt>
-            <dd>{quote.summary.quantity}</dd>
+      {/* 金額のまとめ。明細を変えると自動で計算し直される（DBには保存していない） */}
+      <div className="rounded-xl border border-line bg-surface">
+        <div className="grid grid-cols-2 divide-line sm:grid-cols-4 sm:divide-x">
+          <div className="px-5 py-4">
+            <p className="text-xs font-medium tracking-wide text-ink-faint uppercase">
+              数量
+            </p>
+            <p className="mt-1 text-xl font-bold tabular-nums">
+              {quote.summary.quantity}
+            </p>
           </div>
-          <div>
-            <dt className="text-slate-500">税抜合計</dt>
-            <dd>{quote.summary.subtotal.toLocaleString()}円</dd>
+          <div className="px-5 py-4">
+            <p className="text-xs font-medium tracking-wide text-ink-faint uppercase">
+              税抜合計
+            </p>
+            <p className="mt-1 text-xl font-bold tabular-nums">
+              ¥{quote.summary.subtotal.toLocaleString()}
+            </p>
           </div>
-          <div>
-            <dt className="text-slate-500">消費税額（{quote.taxRate}%）</dt>
-            <dd>{quote.summary.tax.toLocaleString()}円</dd>
+          <div className="px-5 py-4">
+            <p className="text-xs font-medium tracking-wide text-ink-faint uppercase">
+              消費税（{quote.taxRate}%）
+            </p>
+            <p className="mt-1 text-xl font-bold tabular-nums">
+              ¥{quote.summary.tax.toLocaleString()}
+            </p>
           </div>
-          <div>
-            <dt className="text-slate-500">税込合計</dt>
-            <dd className="font-medium">
-              {quote.summary.total.toLocaleString()}円
-            </dd>
+          <div className="bg-accent/10 px-5 py-4">
+            <p className="text-xs font-medium tracking-wide text-accent uppercase">
+              税込合計
+            </p>
+            <p className="mt-1 text-xl font-bold text-accent tabular-nums">
+              ¥{quote.summary.total.toLocaleString()}
+            </p>
           </div>
-        </dl>
+        </div>
         {quote.note ? (
-          <p className="mt-3 text-sm text-slate-600 whitespace-pre-wrap">
+          <p className="border-t border-line px-5 py-3 text-sm text-ink-muted whitespace-pre-wrap">
             通信欄：{quote.note}
           </p>
         ) : null}
-      </section>
+      </div>
 
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-medium">明細項目（{quote.items.length} 件）</h2>
-          <button
-            type="button"
-            className={button({ size: "sm" })}
-            onClick={() => {
-              setFormError(null);
-              setModal({ mode: "create" });
-            }}
-          >
-            項目を追加
-          </button>
-        </div>
+      {listError ? (
+        <p className="mt-4 text-sm text-red-400" role="alert">
+          {listError}
+        </p>
+      ) : null}
 
-        {listError ? (
-          <p className="mt-2 text-sm text-red-600" role="alert">
-            {listError}
-          </p>
-        ) : null}
-
-        {quote.items.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-600">明細項目はありません。</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-slate-200">
-            {quote.items.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3"
-              >
-                <div className="min-w-0">
+      <div className="mt-6">
+        <Card
+          title="明細項目"
+          count={`${quote.items.length} 件`}
+          actions={
+            <button
+              type="button"
+              className={button({ size: "sm" })}
+              onClick={() => {
+                setFormError(null);
+                setModal({ mode: "create" });
+              }}
+            >
+              ＋ 項目を追加
+            </button>
+          }
+        >
+          {quote.items.length === 0 ? (
+            <EmptyState message="明細項目がありません。「＋ 項目を追加」から登録してください。" />
+          ) : (
+            <RowList>
+              {quote.items.map((item) => (
+                <Row
+                  key={item.id}
+                  actions={
+                    <>
+                      <button
+                        type="button"
+                        className={button({ variant: "ghost", size: "sm" })}
+                        onClick={() => {
+                          setFormError(null);
+                          setModal({ mode: "edit", item });
+                        }}
+                      >
+                        編集
+                      </button>
+                      <button
+                        type="button"
+                        className={button({ variant: "ghost", size: "sm" })}
+                        onClick={() => handleDeleteItem(item)}
+                      >
+                        削除
+                      </button>
+                    </>
+                  }
+                >
                   <p className="font-medium break-words">{item.name}</p>
-                  <p className="text-sm text-slate-500">
-                    {item.quantity} 個 × {item.unitPrice.toLocaleString()}円 ={" "}
-                    {(item.quantity * item.unitPrice).toLocaleString()}円
+                  <p className="mt-0.5 text-sm text-ink-muted tabular-nums">
+                    {item.quantity} × ¥{item.unitPrice.toLocaleString()} ={" "}
+                    <span className="text-ink">
+                      ¥{(item.quantity * item.unitPrice).toLocaleString()}
+                    </span>
                   </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className={button({ variant: "outline", size: "sm" })}
-                    onClick={() => {
-                      setFormError(null);
-                      setModal({ mode: "edit", item });
-                    }}
-                  >
-                    編集
-                  </button>
-                  <button
-                    type="button"
-                    className={button({ variant: "outline", size: "sm" })}
-                    onClick={() => handleDeleteItem(item)}
-                  >
-                    削除
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                </Row>
+              ))}
+            </RowList>
+          )}
+        </Card>
+      </div>
 
       <Modal
         open={modal !== null}
@@ -244,32 +276,34 @@ function QuoteDetailPage() {
             required
             defaultValue={modal?.mode === "edit" ? modal.item.name : ""}
           />
-          <TextField
-            name="quantity"
-            label="数量"
-            defaultValue={
-              modal?.mode === "edit" ? String(modal.item.quantity) : "1"
-            }
-          />
-          <TextField
-            name="unitPrice"
-            label="税抜単価"
-            defaultValue={
-              modal?.mode === "edit" ? String(modal.item.unitPrice) : "0"
-            }
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField
+              name="quantity"
+              label="数量"
+              defaultValue={
+                modal?.mode === "edit" ? String(modal.item.quantity) : "1"
+              }
+            />
+            <TextField
+              name="unitPrice"
+              label="税抜単価"
+              defaultValue={
+                modal?.mode === "edit" ? String(modal.item.unitPrice) : "0"
+              }
+            />
+          </div>
 
           {formError ? (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {formError}
             </p>
           ) : null}
 
           <button type="submit" className={button()} disabled={pending}>
-            {pending ? "保存中..." : "登録"}
+            {pending ? "保存中..." : "保存"}
           </button>
         </form>
       </Modal>
-    </main>
+    </AppShell>
   );
 }

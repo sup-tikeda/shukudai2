@@ -1,6 +1,14 @@
 import { useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { button, Modal, SelectField, TextField } from "~/components/ui/form";
+import {
+  AppShell,
+  Badge,
+  Card,
+  PageHeader,
+  Row,
+  RowList,
+} from "~/components/ui/layout";
 import {
   accountCreateInputSchema,
   accountPasswordInputSchema,
@@ -44,22 +52,22 @@ function MasterPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-8">
-      <p className="text-sm">
-        <Link to="/" className="text-slate-500 underline">
-          ← ダッシュボードへ
-        </Link>
-      </p>
-      <h1 className="mt-1 text-xl font-bold">マスタ</h1>
+    <AppShell>
+      <PageHeader
+        title="マスタ"
+        subtitle="ログインアカウントと、見積・請求書に印字する自社情報を管理します。"
+        backTo="/"
+        backLabel="ダッシュボード"
+      />
 
-      <div className="mt-6 flex flex-col gap-4 sm:flex-row">
-        <nav className="flex shrink-0 gap-2 sm:w-48 sm:flex-col">
+      <div className="flex flex-col gap-5 sm:flex-row">
+        <nav className="flex shrink-0 gap-2 sm:w-44 sm:flex-col">
           <button
             type="button"
             onClick={() => setTab("employees")}
             className={button({
               variant: tab === "employees" ? "primary" : "outline",
-              className: "w-full",
+              className: "w-full justify-start",
             })}
           >
             社員マスタ
@@ -69,7 +77,7 @@ function MasterPage() {
             onClick={() => setTab("shopSettings")}
             className={button({
               variant: tab === "shopSettings" ? "primary" : "outline",
-              className: "w-full",
+              className: "w-full justify-start",
             })}
           >
             会社設定
@@ -84,7 +92,7 @@ function MasterPage() {
           )}
         </div>
       </div>
-    </main>
+    </AppShell>
   );
 }
 
@@ -178,65 +186,69 @@ function EmployeeSection({
   }
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="font-medium">社員マスタ</h2>
-        <button
-          type="button"
-          className={button({ size: "sm" })}
-          onClick={() => {
-            setFormError(null);
-            setModal({ mode: "create" });
-          }}
-        >
-          新規作成
-        </button>
-      </div>
-
+    <>
       {listError ? (
-        <p className="mt-2 text-sm text-red-600" role="alert">
+        <p className="mb-4 text-sm text-red-400" role="alert">
           {listError}
         </p>
       ) : null}
 
-      <ul className="mt-4 divide-y divide-slate-200">
-        {accounts.map((account) => (
-          <li
-            key={account.id}
-            className="flex flex-wrap items-center justify-between gap-2 py-3"
+      <Card
+        title="社員マスタ"
+        count={`${accounts.length} 名`}
+        actions={
+          <button
+            type="button"
+            className={button({ size: "sm" })}
+            onClick={() => {
+              setFormError(null);
+              setModal({ mode: "create" });
+            }}
           >
-            <div className="min-w-0">
-              <p className="font-medium break-words">
-                {account.name}（{account.username}）
+            ＋ 新規作成
+          </button>
+        }
+      >
+        <RowList>
+          {accounts.map((account) => (
+            <Row
+              key={account.id}
+              actions={
+                <>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => {
+                      setFormError(null);
+                      setModal({ mode: "edit", account });
+                    }}
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => handleDelete(account)}
+                  >
+                    削除
+                  </button>
+                </>
+              }
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-medium break-words">{account.name}</p>
+                <Badge tone={account.role === "admin" ? "accent" : "neutral"}>
+                  {roleOptions.find((o) => o.value === account.role)?.label ??
+                    account.role}
+                </Badge>
+              </div>
+              <p className="mt-0.5 text-sm text-ink-muted">
+                @{account.username}
               </p>
-              <p className="text-sm text-slate-500">
-                権限:{" "}
-                {roleOptions.find((o) => o.value === account.role)?.label ??
-                  account.role}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={button({ variant: "outline", size: "sm" })}
-                onClick={() => {
-                  setFormError(null);
-                  setModal({ mode: "edit", account });
-                }}
-              >
-                編集
-              </button>
-              <button
-                type="button"
-                className={button({ variant: "outline", size: "sm" })}
-                onClick={() => handleDelete(account)}
-              >
-                削除
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+            </Row>
+          ))}
+        </RowList>
+      </Card>
 
       <Modal
         open={modal !== null}
@@ -285,17 +297,17 @@ function EmployeeSection({
           />
 
           {formError ? (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-red-400" role="alert">
               {formError}
             </p>
           ) : null}
 
           <button type="submit" className={button()} disabled={pending}>
-            {pending ? "保存中..." : "登録"}
+            {pending ? "保存中..." : "保存"}
           </button>
         </form>
       </Modal>
-    </section>
+    </>
   );
 }
 
@@ -340,46 +352,96 @@ function ShopSettingsSection({
   }
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      <h2 className="font-medium">会社設定</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        見積・請求書に印字する自社情報と、既定の消費税率を設定します。
-      </p>
+    <Card title="会社設定">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 py-5">
+        <p className="text-sm text-ink-muted">
+          見積・請求書に印字する自社情報と、既定の消費税率を設定します。
+        </p>
 
-      <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
-        <TextField name="companyName" label="会社名" defaultValue={settings.companyName ?? ""} />
-        <TextField name="postalCode" label="郵便番号" defaultValue={settings.postalCode ?? ""} />
-        <TextField name="address" label="住所" defaultValue={settings.address ?? ""} />
-        <TextField name="building" label="建物" defaultValue={settings.building ?? ""} />
-        <TextField name="phone" label="電話番号" defaultValue={settings.phone ?? ""} />
-        <TextField name="fax" label="ファックス番号" defaultValue={settings.fax ?? ""} />
-        <TextField name="website" label="ウェブサイト" defaultValue={settings.website ?? ""} />
-        <TextField name="email" label="メールアドレス" type="email" defaultValue={settings.email ?? ""} />
         <TextField
-          name="taxRate"
-          label="基本税率（%）"
-          defaultValue={String(settings.taxRate)}
+          name="companyName"
+          label="会社名"
+          defaultValue={settings.companyName ?? ""}
         />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <TextField
+            name="postalCode"
+            label="郵便番号"
+            defaultValue={settings.postalCode ?? ""}
+          />
+          <TextField
+            name="building"
+            label="建物"
+            defaultValue={settings.building ?? ""}
+          />
+        </div>
         <TextField
-          name="invoiceNumber"
-          label="インボイス登録番号"
-          defaultValue={settings.invoiceNumber ?? ""}
+          name="address"
+          label="住所"
+          defaultValue={settings.address ?? ""}
         />
-        <TextField name="bankInfo" label="振込先" multiline rows={3} defaultValue={settings.bankInfo ?? ""} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <TextField
+            name="phone"
+            label="電話番号"
+            defaultValue={settings.phone ?? ""}
+          />
+          <TextField
+            name="fax"
+            label="ファックス番号"
+            defaultValue={settings.fax ?? ""}
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <TextField
+            name="website"
+            label="ウェブサイト"
+            defaultValue={settings.website ?? ""}
+          />
+          <TextField
+            name="email"
+            label="メールアドレス"
+            type="email"
+            defaultValue={settings.email ?? ""}
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <TextField
+            name="taxRate"
+            label="基本税率(%)"
+            defaultValue={String(settings.taxRate)}
+          />
+          <TextField
+            name="invoiceNumber"
+            label="インボイス登録番号"
+            defaultValue={settings.invoiceNumber ?? ""}
+          />
+        </div>
+        <TextField
+          name="bankInfo"
+          label="振込先"
+          multiline
+          rows={3}
+          defaultValue={settings.bankInfo ?? ""}
+        />
 
         {formError ? (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="text-sm text-red-400" role="alert">
             {formError}
           </p>
         ) : null}
         {saved && !formError ? (
-          <p className="text-sm text-green-600">保存しました。</p>
+          <p className="text-sm text-emerald-400">保存しました。</p>
         ) : null}
 
-        <button type="submit" className={button({ className: "sm:w-auto" })} disabled={pending}>
+        <button
+          type="submit"
+          className={button({ className: "sm:w-auto sm:self-start" })}
+          disabled={pending}
+        >
           {pending ? "保存中..." : "保存"}
         </button>
       </form>
-    </section>
+    </Card>
   );
 }
