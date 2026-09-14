@@ -10,6 +10,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["tests/**/*.test.ts"],
+    // グラフ部品の描画テストはJSXを書くため .tsx も対象にする
+    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
   },
 });

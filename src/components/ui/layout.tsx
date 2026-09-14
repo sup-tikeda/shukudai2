@@ -91,7 +91,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">{children}</main>
+      {/* ダッシュボードを1画面に収めたいため、上下の余白は控えめにしている */}
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">{children}</main>
     </div>
   );
 }
@@ -359,43 +360,54 @@ export function DetailList({ children }: { children: ReactNode }) {
 
 /**
  * ダッシュボードの数値タイル。
- * accent を付けたものだけオレンジで塗り、いちばん見てほしい数字を1つに絞る。
+ *
+ * tone で強調の仕方を変える。
+ * - accent：オレンジで塗りつぶす。いちばん見てほしい数字1枚だけに使う
+ * - danger：数字だけ赤くする。要対応（0件なら通常表示に戻す）を示す
+ *
+ * sub には「未作業 3 / 作業中 2」のような補足を1行だけ添えられる。
  */
 export function StatTile({
   label,
   value,
   unit,
-  accent,
+  tone = "default",
+  sub,
 }: {
   label: string;
   value: ReactNode;
   unit?: string;
-  accent?: boolean;
+  tone?: "default" | "accent" | "danger";
+  sub?: string;
 }) {
+  const accent = tone === "accent";
+
   return (
     <div
-      className={
+      className={[
+        "rounded-xl px-4 py-3.5 shadow-sm",
         accent
-          ? "rounded-xl bg-accent px-4 py-4 shadow-sm shadow-accent/30"
-          : "rounded-xl border border-line bg-surface px-4 py-4 shadow-sm shadow-ink/5"
-      }
+          ? "bg-accent shadow-accent/30"
+          : "border border-line bg-surface shadow-ink/5",
+      ].join(" ")}
     >
       <p
-        className={`text-xs font-bold tracking-wide uppercase ${
+        className={`text-[11px] font-bold tracking-wide whitespace-nowrap uppercase ${
           accent ? "text-accent-ink/80" : "text-ink-faint"
         }`}
       >
         {label}
       </p>
       <p
-        className={`mt-1.5 text-3xl font-black tracking-tight tabular-nums ${
-          accent ? "text-accent-ink" : ""
-        }`}
+        className={[
+          "mt-1 text-2xl font-black tracking-tight whitespace-nowrap tabular-nums",
+          accent ? "text-accent-ink" : tone === "danger" ? "text-danger" : "",
+        ].join(" ")}
       >
         {value}
         {unit ? (
           <span
-            className={`ml-1 text-sm font-bold ${
+            className={`ml-0.5 text-sm font-bold ${
               accent ? "text-accent-ink/80" : "text-ink-muted"
             }`}
           >
@@ -403,6 +415,15 @@ export function StatTile({
           </span>
         ) : null}
       </p>
+      {sub ? (
+        <p
+          className={`mt-0.5 text-[11px] whitespace-nowrap ${
+            accent ? "text-accent-ink/70" : "text-ink-faint"
+          }`}
+        >
+          {sub}
+        </p>
+      ) : null}
     </div>
   );
 }
