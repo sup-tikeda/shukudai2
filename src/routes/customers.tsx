@@ -74,6 +74,7 @@ function CustomersPage() {
   const visibleCustomers = customers
     .filter((c) =>
       matchesQuery(query, [
+        String(c.customerNumber),
         c.name,
         c.phone,
         c.mobilePhone,
@@ -82,11 +83,13 @@ function CustomersPage() {
         c.contactName,
       ]),
     )
-    .sort((a, b) =>
-      sortKey === "newest"
-        ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        : a.name.localeCompare(b.name, "ja"),
-    );
+    .sort((a, b) => {
+      if (sortKey === "number") return a.customerNumber - b.customerNumber;
+      if (sortKey === "newest") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return a.name.localeCompare(b.name, "ja");
+    });
 
   async function reload() {
     await router.invalidate();
@@ -181,11 +184,12 @@ function CustomersPage() {
       <ListToolbar
         query={query}
         onQueryChange={setQuery}
-        placeholder="顧客名・電話番号・住所で絞り込み"
+        placeholder="顧客番号・顧客名・電話番号・住所で絞り込み"
         sortKey={sortKey}
         onSortChange={setSortKey}
         sortOptions={[
           { value: "name", label: "名前順" },
+          { value: "number", label: "顧客番号順" },
           { value: "newest", label: "登録が新しい順" },
         ]}
       />
@@ -209,6 +213,15 @@ function CustomersPage() {
               : "条件に合う顧客が見つかりませんでした。"
           }
           columns={[
+            {
+              key: "customerNumber",
+              header: "番号",
+              render: (customer) => (
+                <span className="whitespace-nowrap text-ink-faint tabular-nums">
+                  {String(customer.customerNumber).padStart(6, "0")}
+                </span>
+              ),
+            },
             {
               key: "name",
               header: "顧客名",

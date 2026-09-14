@@ -71,6 +71,20 @@
       "when": 1789377851745,
       "tag": "0009_lonely_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789378023896,
+      "tag": "0010_naive_sugar_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789378116753,
+      "tag": "0011_blushing_vindicator",
+      "breakpoints": true
     }
   ]
 }

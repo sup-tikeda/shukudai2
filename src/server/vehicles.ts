@@ -17,6 +17,7 @@ export const listVehicles = createServerFn({ method: "GET" }).handler(
     return db
       .select({
         id: vehicles.id,
+        manageNumber: vehicles.manageNumber,
         modelName: vehicles.modelName,
         vehicleNumber: vehicles.vehicleNumber,
         maker: vehicles.maker,
@@ -60,6 +61,7 @@ export const getVehicle = createServerFn({ method: "GET" })
     const [vehicle] = await db
       .select({
         id: vehicles.id,
+        manageNumber: vehicles.manageNumber,
         customerId: vehicles.customerId,
         customerName: customers.name,
         modelName: vehicles.modelName,

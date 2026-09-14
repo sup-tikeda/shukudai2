@@ -20,6 +20,7 @@ export const listCustomers = createServerFn({ method: "GET" }).handler(
     return db
       .select({
         id: customers.id,
+        customerNumber: customers.customerNumber,
         name: customers.name,
         contactName: customers.contactName,
         postalCode: customers.postalCode,

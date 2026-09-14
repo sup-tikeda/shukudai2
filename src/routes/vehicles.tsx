@@ -78,6 +78,7 @@ function VehiclesPage() {
   const visibleVehicles = vehicles
     .filter((v) =>
       matchesQuery(query, [
+        String(v.manageNumber),
         v.modelName,
         v.maker,
         v.vehicleNumber,
@@ -85,6 +86,9 @@ function VehiclesPage() {
       ]),
     )
     .sort((a, b) => {
+      if (sortKey === "number") {
+        return a.manageNumber - b.manageNumber;
+      }
       if (sortKey === "inspection") {
         // 車検期限が近い順。未設定は最後に回す
         return (a.inspectionExpiresOn ?? "9999-12-31").localeCompare(
@@ -214,11 +218,12 @@ function VehiclesPage() {
       <ListToolbar
         query={query}
         onQueryChange={setQuery}
-        placeholder="モデル名・車両番号・メーカー・所有者で絞り込み"
+        placeholder="管理番号・モデル名・車両番号・メーカー・所有者で絞り込み"
         sortKey={sortKey}
         onSortChange={setSortKey}
         sortOptions={[
           { value: "model", label: "モデル名順" },
+          { value: "number", label: "管理番号順" },
           { value: "inspection", label: "車検期限が近い順" },
           { value: "customer", label: "所有者順" },
         ]}
@@ -243,6 +248,15 @@ function VehiclesPage() {
               : "条件に合う車両が見つかりませんでした。"
           }
           columns={[
+            {
+              key: "manageNumber",
+              header: "管理番号",
+              render: (vehicle) => (
+                <span className="whitespace-nowrap text-ink-faint tabular-nums">
+                  {String(vehicle.manageNumber).padStart(6, "0")}
+                </span>
+              ),
+            },
             {
               key: "model",
               header: "モデル名",

@@ -40,7 +40,7 @@ function VehicleDetailPage() {
         backLabel="車両一覧"
         subtitle={
           <>
-            所有者：
+            No. {String(vehicle.manageNumber).padStart(6, "0")} ／ 所有者：
             <Link
               to="/customers/$id"
               params={{ id: vehicle.customerId }}

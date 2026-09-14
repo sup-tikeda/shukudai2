@@ -59,7 +59,7 @@ function CustomerDetailPage() {
     <AppShell>
       <PageHeader
         title={customer.name}
-        subtitle={`車両 ${vehicles.length} 台 ／ 案件 ${cases.length} 件 ／ 見積・請求 ${quotes.length} 件`}
+        subtitle={`No. ${String(customer.customerNumber).padStart(6, "0")} ／ 車両 ${vehicles.length} 台 ／ 案件 ${cases.length} 件 ／ 見積・請求 ${quotes.length} 件`}
         backTo="/customers"
         backLabel="顧客一覧"
       />

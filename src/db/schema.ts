@@ -22,6 +22,8 @@ import { user } from "./auth-schema";
  */
 export const customers = pgTable("customers", {
   id: uuid("id").primaryKey().defaultRandom(),
+  // 電話口や書類で使う顧客番号。UUIDは人が扱えないため、別に連番を持つ
+  customerNumber: serial("customer_number").notNull().unique(),
   name: varchar("name", { length: 100 }).notNull(),
   contactName: varchar("contact_name", { length: 60 }),
   postalCode: varchar("postal_code", { length: 10 }),
@@ -47,10 +49,14 @@ export type Customer = typeof customers.$inferSelect;
 /** 車両（バイク）。顧客が保有する1台ごとのレコード。 */
 export const vehicles = pgTable("vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),
+  // 店内で1台を特定するための管理番号（連番）。
+  // 下の `vehicleNumber`（ナンバープレート）とは別物なので名前を分けている。
+  manageNumber: serial("manage_number").notNull().unique(),
   customerId: uuid("customer_id")
     .notNull()
     .references(() => customers.id, { onDelete: "cascade" }),
   modelName: varchar("model_name", { length: 100 }).notNull(),
+  // ナンバープレートの番号。未登録車や書類待ちで空のこともある
   vehicleNumber: varchar("vehicle_number", { length: 50 }),
   maker: varchar("maker", { length: 30 }),
   displacement: integer("displacement"),
@@ -78,7 +84,7 @@ export const cases = pgTable("cases", {
   id: uuid("id").primaryKey().defaultRandom(),
   // 画面や電話口で読み上げる案件番号。UUIDは人が扱えないため、別に連番を持つ
   // （見積・請求の書類番号と同じ考え方）
-  caseNumber: serial("case_number").notNull(),
+  caseNumber: serial("case_number").notNull().unique(),
   vehicleId: uuid("vehicle_id")
     .notNull()
     .references(() => vehicles.id, { onDelete: "cascade" }),
@@ -105,7 +111,7 @@ export type Case = typeof cases.$inferSelect;
 export const quotes = pgTable("quotes", {
   id: uuid("id").primaryKey().defaultRandom(),
   // 帳票に印字する書類番号。UUIDは人が読み上げられないため、別に連番を持つ
-  docNumber: serial("doc_number").notNull(),
+  docNumber: serial("doc_number").notNull().unique(),
   caseId: uuid("case_id")
     .notNull()
     .references(() => cases.id, { onDelete: "cascade" }),
