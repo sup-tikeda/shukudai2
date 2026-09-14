@@ -11,7 +11,6 @@ import {
   PageHeader,
   Row,
   RowList,
-  StickyBar,
 } from "~/components/ui/layout";
 import { customerInputSchema, customerUpdateInputSchema } from "~/lib/validation";
 import {
@@ -156,45 +155,45 @@ function CustomersPage() {
 
   return (
     <AppShell>
-      {/* 一覧を下へスクロールしても、見出しと絞り込みが隠れないようにする */}
-      <StickyBar>
-        <PageHeader
-          title="顧客"
-          subtitle="来店・整備の起点となる顧客情報を管理します。"
-          actions={
-            <button
-              type="button"
-              className={button({ size: "sm" })}
-              onClick={() => {
-                setFormError(null);
-                setModal({ mode: "create" });
-              }}
-            >
-              ＋ 新規登録
-            </button>
-          }
-        />
+      <PageHeader
+        eyebrow="Customers"
+        title="顧客"
+        subtitle="来店・整備の起点となる顧客情報を管理します。"
+        actions={
+          <button
+            type="button"
+            className={button({ size: "sm" })}
+            onClick={() => {
+              setFormError(null);
+              setModal({ mode: "create" });
+            }}
+          >
+            ＋ 新規登録
+          </button>
+        }
+      />
 
-        {listError ? (
-          <p className="mb-4 text-sm text-danger" role="alert">
-            {listError}
-          </p>
-        ) : null}
+      {listError ? (
+        <p className="mb-4 text-sm text-danger" role="alert">
+          {listError}
+        </p>
+      ) : null}
 
-        <ListToolbar
-          query={query}
-          onQueryChange={setQuery}
-          placeholder="顧客名・電話番号・住所で絞り込み"
-          sortKey={sortKey}
-          onSortChange={setSortKey}
-          sortOptions={[
-            { value: "name", label: "名前順" },
-            { value: "newest", label: "登録が新しい順" },
-          ]}
-        />
-      </StickyBar>
+      <ListToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="顧客名・電話番号・住所で絞り込み"
+        sortKey={sortKey}
+        onSortChange={setSortKey}
+        sortOptions={[
+          { value: "name", label: "名前順" },
+          { value: "newest", label: "登録が新しい順" },
+        ]}
+      />
 
+      {/* 一覧は残りの高さいっぱいに広げ、中身だけをスクロールさせる */}
       <Card
+        fill
         title="顧客一覧"
         count={
           query

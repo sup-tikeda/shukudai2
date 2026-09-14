@@ -12,7 +12,6 @@ import {
   PageHeader,
   Row,
   RowList,
-  StickyBar,
 } from "~/components/ui/layout";
 import { quoteDocTypeValues, quoteInputSchema } from "~/lib/validation";
 import { listCaseOptions } from "~/server/cases";
@@ -104,47 +103,47 @@ function QuotesPage() {
 
   return (
     <AppShell>
-      {/* 一覧を下へスクロールしても、見出しと絞り込みが隠れないようにする */}
-      <StickyBar>
-        <PageHeader
-          title="見積・請求"
-          subtitle="案件ごとに見積書・請求書を作成し、明細から金額を自動計算します。"
-          actions={
-            <button
-              type="button"
-              className={button({ size: "sm" })}
-              disabled={caseOptions.length === 0}
-              onClick={() => {
-                setFormError(null);
-                setModalOpen(true);
-              }}
-            >
-              ＋ 新規作成
-            </button>
-          }
-        />
+      <PageHeader
+        eyebrow="Quotes"
+        title="見積・請求"
+        subtitle="案件ごとに見積書・請求書を作成し、明細から金額を自動計算します。"
+        actions={
+          <button
+            type="button"
+            className={button({ size: "sm" })}
+            disabled={caseOptions.length === 0}
+            onClick={() => {
+              setFormError(null);
+              setModalOpen(true);
+            }}
+          >
+            ＋ 新規作成
+          </button>
+        }
+      />
 
-        {caseOptions.length === 0 ? (
-          <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
-            先に「案件」を登録してください。見積・請求は案件に紐づけて作成します。
-          </p>
-        ) : null}
+      {caseOptions.length === 0 ? (
+        <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
+          先に「案件」を登録してください。見積・請求は案件に紐づけて作成します。
+        </p>
+      ) : null}
 
-        <ListToolbar
-          query={query}
-          onQueryChange={setQuery}
-          placeholder="タイトル・顧客・車両・案件・番号で絞り込み"
-          sortKey={sortKey}
-          onSortChange={setSortKey}
-          sortOptions={[
-            { value: "newest", label: "作成日が新しい順" },
-            { value: "amount", label: "金額が大きい順" },
-            { value: "number", label: "書類番号順" },
-          ]}
-        />
-      </StickyBar>
+      <ListToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="タイトル・顧客・車両・案件・番号で絞り込み"
+        sortKey={sortKey}
+        onSortChange={setSortKey}
+        sortOptions={[
+          { value: "newest", label: "作成日が新しい順" },
+          { value: "amount", label: "金額が大きい順" },
+          { value: "number", label: "書類番号順" },
+        ]}
+      />
 
+      {/* 一覧は残りの高さいっぱいに広げ、中身だけをスクロールさせる */}
       <Card
+        fill
         title="見積・請求一覧"
         count={
           query

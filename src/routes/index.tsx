@@ -5,6 +5,7 @@ import {
   AppShell,
   Badge,
   Card,
+  PageHeader,
   remainingDays,
   StatTile,
 } from "~/components/ui/layout";
@@ -46,26 +47,16 @@ function DashboardPage() {
 
   return (
     <AppShell>
-      {/* 全体を1画面に収めるため、見出しは他の画面より控えめな高さにしている */}
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <div className="flex gap-3">
-          <span
-            aria-hidden
-            className="mt-0.5 w-1 shrink-0 rounded-full bg-accent"
-          />
-          <div>
-            <p className="text-[11px] font-black tracking-[0.25em] text-accent uppercase">
-              Dashboard
-            </p>
-            <h1 className="mt-0.5 text-2xl font-black tracking-tight">
-              バイクショップ店舗管理
-            </h1>
-          </div>
-        </div>
-        <p className="text-sm text-ink-muted">
-          {me.name}（{me.username}）としてログイン中
-        </p>
-      </div>
+      {/* 見出しの体裁は他の画面と共通（PageHeader）にそろえている */}
+      <PageHeader
+        eyebrow="Dashboard"
+        title="バイクショップ店舗管理"
+        actions={
+          <p className="text-sm text-ink-muted">
+            {me.name}（{me.username}）としてログイン中
+          </p>
+        }
+      />
 
       {/* 件数のまとめ。画面のいちばん上で「いま何件あるか」を押さえる */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

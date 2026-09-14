@@ -13,7 +13,6 @@ import {
   Row,
   RowList,
   statusTone,
-  StickyBar,
 } from "~/components/ui/layout";
 import {
   caseInputSchema,
@@ -202,53 +201,53 @@ function CasesPage() {
 
   return (
     <AppShell>
-      {/* 一覧を下へスクロールしても、見出しと絞り込みが隠れないようにする */}
-      <StickyBar>
-        <PageHeader
-          title="案件"
-          subtitle="整備・修理などの作業案件と進行状況を管理します。"
-          actions={
-            <button
-              type="button"
-              className={button({ size: "sm" })}
-              disabled={vehicleOptions.length === 0}
-              onClick={() => {
-                setFormError(null);
-                setModal({ mode: "create" });
-              }}
-            >
-              ＋ 新規作成
-            </button>
-          }
-        />
+      <PageHeader
+        eyebrow="Cases"
+        title="案件"
+        subtitle="整備・修理などの作業案件と進行状況を管理します。"
+        actions={
+          <button
+            type="button"
+            className={button({ size: "sm" })}
+            disabled={vehicleOptions.length === 0}
+            onClick={() => {
+              setFormError(null);
+              setModal({ mode: "create" });
+            }}
+          >
+            ＋ 新規作成
+          </button>
+        }
+      />
 
-        {vehicleOptions.length === 0 ? (
-          <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
-            先に「車両」を登録してください。案件は車両に紐づけて管理します。
-          </p>
-        ) : null}
+      {vehicleOptions.length === 0 ? (
+        <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
+          先に「車両」を登録してください。案件は車両に紐づけて管理します。
+        </p>
+      ) : null}
 
-        {listError ? (
-          <p className="mb-4 text-sm text-danger" role="alert">
-            {listError}
-          </p>
-        ) : null}
+      {listError ? (
+        <p className="mb-4 text-sm text-danger" role="alert">
+          {listError}
+        </p>
+      ) : null}
 
-        <ListToolbar
-          query={query}
-          onQueryChange={setQuery}
-          placeholder="案件名・担当者・車両・顧客で絞り込み"
-          sortKey={sortKey}
-          onSortChange={setSortKey}
-          sortOptions={[
-            { value: "start", label: "開始予定日順" },
-            { value: "end", label: "終了予定日が近い順" },
-            { value: "status", label: "ステータス順" },
-          ]}
-        />
-      </StickyBar>
+      <ListToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="案件名・担当者・車両・顧客で絞り込み"
+        sortKey={sortKey}
+        onSortChange={setSortKey}
+        sortOptions={[
+          { value: "start", label: "開始予定日順" },
+          { value: "end", label: "終了予定日が近い順" },
+          { value: "status", label: "ステータス順" },
+        ]}
+      />
 
+      {/* 一覧は残りの高さいっぱいに広げ、中身だけをスクロールさせる */}
       <Card
+        fill
         title="案件一覧"
         count={
           query

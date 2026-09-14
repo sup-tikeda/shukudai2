@@ -61,9 +61,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen bg-shell text-ink">
+    // 画面の高さに収める。はみ出す部分は本文の中だけでスクロールさせる
+    <div className="flex h-screen overflow-hidden bg-shell text-ink">
       {/* 左サイドバー。広い画面では常に出したままにして、現在地が分かるようにする */}
-      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-line bg-surface lg:flex">
+      <aside className="hidden h-full w-56 shrink-0 flex-col border-r border-line bg-surface lg:flex">
         <Link to="/" className="flex items-center gap-2.5 px-5 py-4">
           <BrandMark />
           <span className="leading-tight">
@@ -107,9 +108,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* 狭い画面向け。サイドバーの代わりに上部へ横並びで出す */}
-        <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur lg:hidden">
+        <header className="z-30 shrink-0 border-b border-line bg-surface lg:hidden">
           <div className="flex items-center gap-2 px-4 py-2.5">
             <Link to="/" className="flex items-center gap-2">
               <BrandMark />
@@ -127,9 +128,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* ダッシュボードを1画面に収めたいため、上下の余白は控えめにしている */}
-        <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-          {children}
+        {/*
+          スクロールするのはここだけ。各画面は縦方向のflexの中に置かれるので、
+          一覧のように「見出しは固定して中身だけスクロールしたい」画面は
+          Card に fill を付ければよい（1画面に収まるようにするため）。
+        */}
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 py-6 sm:px-6">
+            {children}
+          </div>
         </main>
       </div>
     </div>
@@ -234,29 +241,20 @@ function IconSettings() {
 }
 
 /**
- * 一覧画面の見出しと絞り込みを、画面上部に貼り付けたままにする枠。
- *
- * 一覧を下までスクロールしても「新規登録」ボタンと検索欄が消えないようにするためのもの。
- * 左右のマイナスマージンは、`main` の余白を超えて背景を敷き、
- * 下の行が透けて見えないようにするため。
- * 上端の位置は、狭い画面だけ上部ナビ（約57px）の下にずらす。
+ * 画面の見出し。右側に主操作ボタンなどを置ける。
+ * 全画面で同じ体裁（オレンジの縦棒＋小見出し＋タイトル）にするため、
+ * ダッシュボードもこの部品を使っている。
  */
-export function StickyBar({ children }: { children: ReactNode }) {
-  return (
-    <div className="sticky top-[57px] z-20 -mx-4 -mt-6 bg-shell px-4 pt-6 sm:-mx-6 sm:px-6 lg:top-0">
-      {children}
-    </div>
-  );
-}
-
-/** 画面の見出し。右側に主操作ボタンなどを置ける。 */
 export function PageHeader({
+  eyebrow,
   title,
   subtitle,
   backTo,
   backLabel,
   actions,
 }: {
+  /** タイトルの上に小さく出す英字ラベル（CSSで大文字にする） */
+  eyebrow?: string;
   title: ReactNode;
   subtitle?: ReactNode;
   backTo?: string;
@@ -280,7 +278,12 @@ export function PageHeader({
               ← {backLabel}
             </Link>
           ) : null}
-          <h1 className="mt-0.5 text-3xl font-black tracking-tight break-words">
+          {eyebrow ? (
+            <p className="text-[11px] font-black tracking-[0.25em] text-accent uppercase">
+              {eyebrow}
+            </p>
+          ) : null}
+          <h1 className="mt-0.5 text-2xl font-black tracking-tight break-words">
             {title}
           </h1>
           {subtitle ? (
@@ -300,18 +303,29 @@ export function Card({
   title,
   count,
   actions,
+  fill,
   children,
 }: {
   title?: ReactNode;
   count?: ReactNode;
   actions?: ReactNode;
+  /** 残りの高さいっぱいに広げ、中身だけをスクロールさせる（一覧画面で使う） */
+  fill?: boolean;
   children: ReactNode;
 }) {
   return (
     // 白いカードを地の色から浮かせ、見出し帯だけ薄く敷いて中身と区切る
-    <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm shadow-ink/5">
+    <section
+      className={[
+        "overflow-hidden rounded-xl border border-line bg-surface shadow-sm shadow-ink/5",
+        // fill: 残りの高さいっぱいに広がり、中身だけがスクロールする。
+        // 一覧が長くなっても画面の外へはみ出さず、見出しと件数が常に見えるようにするため。
+        // min-h-0 が無いと flex の子は縮まず、カードが画面外へあふれる。
+        fill ? "flex min-h-[14rem] min-w-0 flex-1 flex-col" : "",
+      ].join(" ")}
+    >
       {title ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-raised px-5 py-3">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-raised px-5 py-3">
           <h2 className="flex items-baseline gap-2.5 text-sm font-black tracking-wide">
             {title}
             {count !== undefined ? (
@@ -323,7 +337,11 @@ export function Card({
           {actions ? <div className="flex gap-2">{actions}</div> : null}
         </div>
       ) : null}
-      {children}
+      {fill ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      ) : (
+        children
+      )}
     </section>
   );
 }
