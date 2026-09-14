@@ -1,5 +1,6 @@
 import "dotenv/config";
-import { asc, sql } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
@@ -265,58 +266,85 @@ await db.insert(shopSettings).values({
   bankInfo: "サンプル銀行 本店 普通 1234567",
 });
 
-// 社員の詳細情報。ログインアカウントは `pnpm user:create` で別途作るため、
-// ここでは「すでに居るアカウント」に対してだけダミーの詳細を付ける。
+// 社員のダミーデータ。
+//
+// ログインできるアカウント（管理者）は `pnpm user:create` で別途作る。
+// ここで作るのは**ログインしない社員**で、認証情報（accountテーブル）を持たないため
+// ログインはできないが、案件の担当者としては選べる。
+// 後から設定画面でパスワードを設定すれば、ログインできるようになる。
+//
 // 氏名・生年月日・住所は個人情報にあたるため、実在しない値だけを使っている。
-const existingUsers = await db
-  .select({ id: user.id, name: user.name })
-  .from(user)
-  .orderBy(asc(user.createdAt));
-
 const staffDummies = [
   {
-    nameKana: "てんちょう",
-    birthday: "1979-04-12",
-    hiredOn: "1998-04-01",
-    position: "店長",
+    username: "yamada",
+    name: "山田 太郎",
+    nameKana: "やまだ たろう",
+    birthday: "1985-06-20",
+    hiredOn: "2015-04-01",
+    position: "整備士",
     qualification: "二級二輪自動車整備士",
-    postalCode: "170-0001",
-    address: "東京都豊島区西巣鴨",
-    addressLine2: "1-1-1",
-    mobilePhone: "090-0000-1111",
-    email: "tencho@example.test",
-    note: "創業メンバー。車検・重整備を担当。",
+    postalCode: "170-0005",
+    address: "東京都豊島区南大塚",
+    addressLine2: "3-3-3",
+    mobilePhone: "090-0000-3333",
+    email: "yamada@example.test",
+    note: "車検整備・重整備を担当。",
   },
   {
-    nameKana: "てすと たろう",
-    birthday: "1996-09-03",
-    hiredOn: "2021-04-01",
+    username: "takahashi",
+    name: "高橋 次郎",
+    nameKana: "たかはし じろう",
+    birthday: "1992-11-08",
+    hiredOn: "2019-07-01",
     position: "整備士",
     qualification: "三級二輪自動車整備士",
-    postalCode: "171-0021",
-    address: "東京都豊島区西池袋",
-    addressLine2: "2-2-2",
-    building: "サンプルハイツ101",
-    mobilePhone: "090-0000-2222",
-    email: "test-taro@example.test",
-    note: "一般整備・タイヤ交換を担当。",
+    postalCode: "173-0014",
+    address: "東京都板橋区大山東町",
+    addressLine2: "4-4-4",
+    building: "サンプルコーポ203",
+    mobilePhone: "090-0000-4444",
+    email: "takahashi@example.test",
+    note: "カスタム・電装系を担当。",
+  },
+  {
+    username: "kobayashi",
+    name: "小林 三郎",
+    nameKana: "こばやし さぶろう",
+    birthday: "2001-02-17",
+    hiredOn: "2023-04-01",
+    position: "受付",
+    postalCode: "332-0012",
+    address: "埼玉県川口市本町",
+    addressLine2: "5-5-5",
+    mobilePhone: "090-0000-5555",
+    email: "kobayashi@example.test",
+    note: "受付・部品発注を担当。",
   },
 ];
 
-if (existingUsers.length > 0) {
-  await db
-    .insert(staffProfiles)
-    .values(
-      existingUsers.map((u, index) => ({
-        userId: u.id,
-        ...staffDummies[index % staffDummies.length],
-      })),
-    )
-    .onConflictDoNothing();
+for (const staff of staffDummies) {
+  const { username, name, ...profile } = staff;
+  const [created] = await db
+    .insert(user)
+    .values({
+      id: randomBytes(16).toString("hex"),
+      name,
+      // better-auth はメールを必須とするため、画面に出さない内部専用の値を入れる
+      email: `${username}@internal.local`,
+      role: "user",
+      username,
+      displayUsername: username,
+    })
+    .onConflictDoNothing()
+    .returning({ id: user.id });
+
+  if (created) {
+    await db.insert(staffProfiles).values({ userId: created.id, ...profile });
+  }
 }
 
 console.log(
-  `ダミーデータ（顧客4件・車両6件・案件8件・見積/請求6件・明細16件・会社設定1件・社員詳細${existingUsers.length}件）を投入しました。`,
+  `ダミーデータ（顧客4件・車両6件・案件8件・見積/請求6件・明細16件・会社設定1件・社員${staffDummies.length}件）を投入しました。`,
 );
 
 // postgres-js は接続を保持し続けるため、明示的に閉じてプロセスを終わらせる

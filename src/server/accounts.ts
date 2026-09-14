@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { asc, eq, isNull } from "drizzle-orm";
-import { user } from "~/db/auth-schema";
+import { asc, eq, isNull, sql } from "drizzle-orm";
+import { account, user } from "~/db/auth-schema";
 import { staffProfiles } from "~/db/schema";
 import { auth } from "~/lib/auth";
 import { db } from "~/lib/db";
@@ -47,6 +47,12 @@ export const listAccounts = createServerFn({ method: "GET" }).handler(
         mobilePhone: staffProfiles.mobilePhone,
         email: staffProfiles.email,
         note: staffProfiles.note,
+        // 認証情報（account）があるかどうか。無い社員は名簿に載るだけでログインできない
+        canLogin: sql<boolean>`exists (
+          select 1 from ${account}
+          where ${account.userId} = ${user.id}
+            and ${account.providerId} = 'credential'
+        )`,
       })
       .from(user)
       .leftJoin(staffProfiles, eq(staffProfiles.userId, user.id))

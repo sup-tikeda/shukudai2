@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { redirect } from "@tanstack/react-router";
 import { auth } from "~/lib/auth";
+import { requireAdminSession } from "~/server/authGuard";
 
 /**
  * ログイン中のユーザー（未ログインなら null）。
@@ -19,6 +20,20 @@ export const getSessionUserOrNull = createServerFn({ method: "GET" }).handler(
       return null;
     }
     return { name: session.user.name, role: session.user.role ?? null };
+  },
+);
+
+/**
+ * admin でなければ弾く（未ログインは /login、一般ユーザーは / へ戻す）。
+ *
+ * 設定画面のように「そもそも入れてはいけない」画面の `beforeLoad` から呼ぶ。
+ * 各サーバー関数も個別に admin を確認しているが、それだと画面の読み込みが始まってから
+ * 弾かれることになるため、入口の時点で止める。
+ */
+export const assertAdmin = createServerFn({ method: "GET" }).handler(
+  async () => {
+    await requireAdminSession();
+    return null;
   },
 );
 

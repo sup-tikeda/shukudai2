@@ -27,10 +27,13 @@ import {
   updateAccountPassword,
 } from "~/server/accounts";
 import { lookupAddress } from "~/server/postal";
+import { assertAdmin } from "~/server/session";
 import { getShopSettings, updateShopSettings } from "~/server/shopSettings";
 
 export const Route = createFileRoute("/master")({
-  // 未ログイン、もしくはadmin以外はサーバー側でリダイレクトされる
+  // 設定は管理者専用。画面の読み込みが始まる前に、admin以外はここで弾く
+  // （未ログインは /login、一般ユーザーは / へ戻る）
+  beforeLoad: () => assertAdmin(),
   loader: async () => ({
     accounts: await listAccounts(),
     shopSettings: await getShopSettings(),
@@ -310,6 +313,8 @@ function EmployeeSection({
                 {isRetired(account.retiredOn) ? (
                   <Badge>退職（{account.retiredOn}）</Badge>
                 ) : null}
+                {/* 認証情報が無い社員。名簿には載るが、この画面でパスワードを設定するまでログインできない */}
+                {account.canLogin ? null : <Badge>ログイン不可</Badge>}
               </div>
               <p className="mt-0.5 text-sm text-ink-muted break-words">
                 {[
@@ -369,7 +374,11 @@ function EmployeeSection({
           ) : (
             <TextField
               name="newPassword"
-              label="新しいパスワード（変更する場合のみ）"
+              label={
+                modal?.mode === "edit" && !modal.account.canLogin
+                  ? "ログイン用パスワード（設定するとログインできるようになります）"
+                  : "新しいパスワード（変更する場合のみ）"
+              }
               type="password"
               autoComplete="new-password"
             />
