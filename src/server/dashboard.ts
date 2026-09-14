@@ -50,8 +50,10 @@ export const listInspectionAlerts = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireSession();
 
-    // 期限の判定はDB側の現在日付で行う（サーバーとDBで時差が生じないようにするため）
-    const limit = sql`current_date + ${INSPECTION_ALERT_DAYS}`;
+    // 期限の判定はDB側の現在日付で行う（サーバーとDBで時差が生じないようにするため）。
+    // パラメータの型を明示しないと、Postgresが date + 整数 の演算子を一意に決められずエラーになる
+    // （"operator is not unique: date + unknown"）ため、::int で明示的にキャストする。
+    const limit = sql`current_date + ${INSPECTION_ALERT_DAYS}::int`;
 
     return db
       .select({
