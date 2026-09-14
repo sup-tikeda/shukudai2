@@ -243,8 +243,11 @@ function EmployeeSection({
     try {
       await deleteAccount({ data: { id: account.id } });
       await onChanged();
-    } catch {
-      setListError("削除に失敗しました。自分自身は削除できません。");
+    } catch (error) {
+      // 原因はサーバー側が日本語で返すため、そのまま見せる
+      setListError(
+        error instanceof Error ? error.message : "削除に失敗しました。",
+      );
     }
   }
 
@@ -365,6 +368,7 @@ function EmployeeSection({
           />
           {modal?.mode === "create" ? (
             <TextField
+              key="password"
               name="password"
               label="パスワード"
               type="password"
@@ -373,6 +377,7 @@ function EmployeeSection({
             />
           ) : (
             <TextField
+              key="newPassword"
               name="newPassword"
               label={
                 modal?.mode === "edit" && !modal.account.canLogin

@@ -154,6 +154,11 @@ export function Modal({
     <Dialog.Root
       open={open}
       onOpenChange={(details) => onOpenChange(details.open)}
+      // 閉じたら中身をDOMから取り除く。これが無いとフォームがマウントされたまま残り、
+      // 非制御の入力欄（defaultValue）が前回開いた行の値を保持してしまう。
+      // 別の行を編集したつもりで前の行の値を保存する、という事故につながるため必須。
+      lazyMount
+      unmountOnExit
     >
       <Dialog.Backdrop className="fixed inset-0 bg-ink/25 backdrop-blur-sm" />
       <Dialog.Positioner className="fixed inset-0 flex items-start justify-center overflow-y-auto p-4 sm:items-center">

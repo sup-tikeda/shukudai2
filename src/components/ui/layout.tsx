@@ -4,17 +4,21 @@ import { tv } from "tailwind-variants";
 import { button } from "~/components/ui/form";
 import { signOut } from "~/lib/auth-client";
 
-/** 画面上部の固定ナビ。各画面から「ダッシュボードへ戻る」導線を無くし、常に全画面へ移動できるようにする。 */
+/**
+ * 左サイドバーに出す業務メニュー。
+ * 顧客 → 車両 → 案件 → 見積・請求と、実際の仕事の流れの順に並べている。
+ */
 const navLinks = [
-  { to: "/customers", label: "顧客" },
-  { to: "/vehicles", label: "車両" },
-  { to: "/cases", label: "案件" },
-  { to: "/quotes", label: "見積・請求" },
+  { to: "/", label: "ダッシュボード", icon: IconDashboard },
+  { to: "/customers", label: "顧客", icon: IconCustomer },
+  { to: "/vehicles", label: "車両", icon: IconVehicle },
+  { to: "/cases", label: "案件", icon: IconCase },
+  { to: "/quotes", label: "見積・請求", icon: IconQuote },
 ] as const;
 
 const navLink = tv({
   // 選択中は塗りつぶし。薄い色違いではなく面で示して、現在地をひと目で分かるようにする
-  base: "rounded-md px-3.5 py-1.5 text-sm font-bold transition-colors",
+  base: "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-bold transition-colors",
   variants: {
     active: {
       true: "bg-accent text-accent-ink shadow-sm shadow-accent/30",
@@ -34,52 +38,85 @@ export function AppShell({ children }: { children: ReactNode }) {
     await router.navigate({ to: "/login" });
   }
 
+  /**
+   * サイドバーの中身。狭い画面では上部の横並びメニューとして同じものを使うため、
+   * 向き（縦／横）だけ差し替えられるようにしている。
+   */
+  const menu = (
+    <>
+      {navLinks.map((item) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          // ダッシュボードは全画面の親パスになるため、完全一致のときだけ選択中にする
+          activeOptions={item.to === "/" ? { exact: true } : undefined}
+          className={navLink({ active: false })}
+          activeProps={{ className: navLink({ active: true }) }}
+        >
+          <item.icon />
+          {item.label}
+        </Link>
+      ))}
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-shell text-ink">
-      <header className="sticky top-0 z-10 border-b-2 border-line bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-          <Link to="/" className="flex items-center gap-2.5">
-            {/* ブランド表示。六角ボルトを模したオレンジの印が全画面共通の目印になる */}
-            <span
-              aria-hidden
-              className="flex h-7 w-7 items-center justify-center bg-accent text-sm font-black text-accent-ink"
-              style={{
-                clipPath:
-                  "polygon(25% 2%, 75% 2%, 100% 50%, 75% 98%, 25% 98%, 0% 50%)",
-              }}
-            >
-              I
-            </span>
-            <span className="text-sm font-black tracking-widest text-ink uppercase">
+    <div className="flex min-h-screen bg-shell text-ink">
+      {/* 左サイドバー。広い画面では常に出したままにして、現在地が分かるようにする */}
+      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-line bg-surface lg:flex">
+        <Link to="/" className="flex items-center gap-2.5 px-5 py-4">
+          <BrandMark />
+          <span className="leading-tight">
+            <span className="block text-sm font-black tracking-widest text-ink uppercase">
               Ikeda
             </span>
-          </Link>
+            <span className="block text-[10px] text-ink-faint">店舗管理</span>
+          </span>
+        </Link>
 
-          {/* 左＝毎日使う業務。顧客→車両→案件→見積請求と、実際の仕事の順に並べている */}
-          <nav className="flex flex-1 flex-wrap items-center gap-1">
-            {navLinks.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={navLink({ active: false })}
-                activeProps={{ className: navLink({ active: true }) }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+        <nav className="flex flex-1 flex-col gap-1 px-3 py-2">{menu}</nav>
 
-          {/* 右＝たまにしか使わない設定と、自分自身の操作。縦線で業務メニューと分ける */}
-          <div className="flex items-center gap-1 border-l border-line pl-3">
-            {isAdmin ? (
-              <Link
-                to="/master"
-                className={navLink({ active: false })}
-                activeProps={{ className: navLink({ active: true }) }}
-              >
-                設定
-              </Link>
-            ) : null}
+        {/* 下端＝たまにしか使わない設定と、自分自身の操作。業務メニューと離して置く */}
+        <div className="flex flex-col gap-1 border-t border-line px-3 py-3">
+          {isAdmin ? (
+            <Link
+              to="/master"
+              className={navLink({ active: false })}
+              activeProps={{ className: navLink({ active: true }) }}
+            >
+              <IconSettings />
+              設定
+            </Link>
+          ) : null}
+          {sessionUser ? (
+            <p className="px-3 pt-1 text-[11px] text-ink-faint">
+              {sessionUser.name} でログイン中
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className={button({
+              variant: "ghost",
+              size: "sm",
+              className: "justify-start",
+            })}
+          >
+            ログアウト
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* 狭い画面向け。サイドバーの代わりに上部へ横並びで出す */}
+        <header className="sticky top-0 z-10 border-b border-line bg-surface/95 backdrop-blur lg:hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5">
+            <Link to="/" className="flex items-center gap-2">
+              <BrandMark />
+            </Link>
+            <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+              {menu}
+            </nav>
             <button
               type="button"
               onClick={handleSignOut}
@@ -88,12 +125,111 @@ export function AppShell({ children }: { children: ReactNode }) {
               ログアウト
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* ダッシュボードを1画面に収めたいため、上下の余白は控えめにしている */}
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">{children}</main>
+        {/* ダッシュボードを1画面に収めたいため、上下の余白は控えめにしている */}
+        <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+          {children}
+        </main>
+      </div>
     </div>
+  );
+}
+
+/** 店のシンボル。六角ボルトを模した図形で、画像を使わずに作っている */
+function BrandMark() {
+  return (
+    <span
+      aria-hidden
+      className="flex h-8 w-8 shrink-0 items-center justify-center bg-accent text-sm font-black text-accent-ink"
+      style={{
+        clipPath: "polygon(25% 2%, 75% 2%, 100% 50%, 75% 98%, 25% 98%, 0% 50%)",
+      }}
+    >
+      I
+    </span>
+  );
+}
+
+/**
+ * メニューのアイコン。アイコン用のライブラリは入れず、単純な図形で描いている
+ * （Cloudflare Workers のスクリプトサイズを増やさないため）。
+ */
+function iconProps() {
+  return {
+    viewBox: "0 0 20 20",
+    className: "h-4 w-4 shrink-0",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+}
+
+function IconDashboard() {
+  return (
+    <svg {...iconProps()}>
+      <rect x="2.5" y="2.5" width="6" height="6" rx="1.5" />
+      <rect x="11.5" y="2.5" width="6" height="6" rx="1.5" />
+      <rect x="2.5" y="11.5" width="6" height="6" rx="1.5" />
+      <rect x="11.5" y="11.5" width="6" height="6" rx="1.5" />
+    </svg>
+  );
+}
+
+function IconCustomer() {
+  return (
+    <svg {...iconProps()}>
+      <circle cx="10" cy="6.5" r="3.2" />
+      <path d="M3.5 17c0-3.2 2.9-5.2 6.5-5.2s6.5 2 6.5 5.2" />
+    </svg>
+  );
+}
+
+/** 車両。前後のホイールとハンドルでバイクを表している */
+function IconVehicle() {
+  return (
+    <svg {...iconProps()}>
+      <circle cx="4.5" cy="13.5" r="3" />
+      <circle cx="15.5" cy="13.5" r="3" />
+      <path d="M4.5 13.5 8 7.5h4l3.5 6" />
+      <path d="M11 4.5h3" />
+    </svg>
+  );
+}
+
+/** 案件。作業指示をイメージしたクリップボード */
+function IconCase() {
+  return (
+    <svg {...iconProps()}>
+      <rect x="4" y="3.5" width="12" height="14" rx="2" />
+      <path d="M7.5 3.5V2.5h5v1" />
+      <path d="M7.5 8.5h5M7.5 12h3.5" />
+    </svg>
+  );
+}
+
+/** 見積・請求。金額の入った書類 */
+function IconQuote() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M5 2.5h7l3 3v12H5z" />
+      <path d="M11.5 2.5v3.5H15" />
+      <path d="M7.5 10.5h5M7.5 13.5h3" />
+    </svg>
+  );
+}
+
+/** 設定。つまみ付きのスライダーで表している */
+function IconSettings() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M3 6h14M3 14h14" />
+      <circle cx="8" cy="6" r="2" />
+      <circle cx="13" cy="14" r="2" />
+    </svg>
   );
 }
 

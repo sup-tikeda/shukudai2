@@ -86,6 +86,15 @@ export const createAccount = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { headers } = await requireAdminSession();
 
+    // アカウント名は一意。先に確認して、DBの英語エラーではなく業務的な説明を返す
+    const [duplicated] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.username, data.username));
+    if (duplicated) {
+      throw new Error("このアカウント名はすでに使われています。");
+    }
+
     await auth.api.createUser({
       headers,
       body: {
@@ -97,12 +106,19 @@ export const createAccount = createServerFn({ method: "POST" })
       },
     });
 
-    // 続けて詳細情報を保存できるよう、作成したユーザーのIDを返す
+    // 続けて詳細情報を保存できるよう、作成したユーザーのIDを返す。
+    // 取れなかった場合に黙って進むと、詳細情報だけ保存されないまま「保存しました」に
+    // なってしまうため、ここで止めて利用者に知らせる。
     const [created] = await db
       .select({ id: user.id })
       .from(user)
       .where(eq(user.username, data.username));
-    return { id: created?.id ?? null };
+    if (!created) {
+      throw new Error(
+        "社員を作成しましたが、IDを取得できず詳細情報を保存できませんでした。編集画面から入力し直してください。",
+      );
+    }
+    return { id: created.id };
   });
 
 /**
@@ -133,7 +149,25 @@ export const saveStaffProfile = createServerFn({ method: "POST" })
 export const updateAccount = createServerFn({ method: "POST" })
   .validator(accountUpdateInputSchema)
   .handler(async ({ data }) => {
-    const { headers } = await requireAdminSession();
+    const { session, headers } = await requireAdminSession();
+
+    // 自分自身を一般ユーザーに降格すると、設定画面に誰も入れなくなる恐れがあるため防ぐ
+    if (data.id === session.user.id && data.role !== "admin") {
+      throw new Error(
+        "自分自身の権限は変更できません。別の管理者アカウントから変更してください。",
+      );
+    }
+
+    // アカウント名を変える場合は、他の社員と重複しないか先に確認する
+    if (data.username !== data.currentUsername) {
+      const [duplicated] = await db
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.username, data.username));
+      if (duplicated && duplicated.id !== data.id) {
+        throw new Error("このアカウント名はすでに使われています。");
+      }
+    }
 
     const updateData: Record<string, unknown> = {
       name: data.name,

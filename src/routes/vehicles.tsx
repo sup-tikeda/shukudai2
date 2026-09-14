@@ -159,7 +159,7 @@ function VehiclesPage() {
   async function handleDelete(row: VehicleRow) {
     if (
       !window.confirm(
-        `「${row.modelName}」を削除しますか？（関連する案件も削除されます）`,
+        `「${row.modelName}」を削除しますか？\n関連する案件・見積・請求もすべて削除されます。`,
       )
     ) {
       return;
@@ -323,7 +323,11 @@ function VehiclesPage() {
             <SelectField
               name="maker"
               label="メーカー"
-              options={makerOptions.map((v) => ({ value: v, label: v }))}
+              // 未選択を選べるようにする。空の選択肢が無いと、未指定でも先頭が保存されてしまう
+              options={[
+                { value: "", label: "未選択" },
+                ...makerOptions.map((v) => ({ value: v, label: v })),
+              ]}
               defaultValue={
                 modal?.mode === "edit" ? (modal.vehicle.maker ?? "") : ""
               }
@@ -351,7 +355,10 @@ function VehiclesPage() {
             <SelectField
               name="color"
               label="色"
-              options={colorOptions.map((v) => ({ value: v, label: v }))}
+              options={[
+                { value: "", label: "未選択" },
+                ...colorOptions.map((v) => ({ value: v, label: v })),
+              ]}
               defaultValue={
                 modal?.mode === "edit" ? (modal.vehicle.color ?? "") : ""
               }

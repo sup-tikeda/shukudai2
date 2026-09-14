@@ -64,25 +64,58 @@ export const accountIdSchema = z.object({
 
 // ---- 以下、バイクショップ店舗管理（顧客・車両・案件・見積・請求）----
 
-/** 空文字を送ってきた任意入力欄を undefined に正規化する（DBにはNULLとして入る） */
+/**
+ * 空文字で送られてきた任意入力欄を **null** に正規化する。
+ *
+ * `undefined` ではなく `null` にするのが重要。drizzle-orm の `.set()` は
+ * **値が undefined のキーをSQLから除外する**ため、undefined にすると
+ * 「画面で項目を空にして保存しても、前の値が消えない」という不具合になる
+ * （実際に「案件の担当者を未定に戻せない」という形で発生した）。
+ * null なら NULL が書き込まれ、意図どおり値を消せる。
+ */
 function optionalText(maxLength: number) {
   return z
     .string()
     .trim()
     .max(maxLength)
+    .nullable()
     .optional()
-    .transform((v) => (v ? v : undefined));
+    .transform((v) => (v ? v : null));
+}
+
+/** メールアドレス欄。空欄は許容し、入力があるときだけ形式を確認する */
+function optionalEmail() {
+  return z
+    .string()
+    .trim()
+    .max(255)
+    .nullable()
+    .optional()
+    .transform((v) => (v ? v : null))
+    .refine((v) => v === null || z.email().safeParse(v).success, {
+      message: "メールアドレスの形式が正しくありません",
+    });
 }
 
 /** 空文字は許容しつつ、値がある場合だけ日付形式を検証する（未定・未入力を表すため） */
 const optionalDate = z
   .string()
   .trim()
+  .nullable()
   .optional()
-  .transform((v) => (v ? v : undefined))
-  .refine((v) => v === undefined || z.iso.date().safeParse(v).success, {
+  .transform((v) => (v ? v : null))
+  .refine((v) => v === null || z.iso.date().safeParse(v).success, {
     message: "日付の形式が正しくありません",
   });
+
+/** 空欄を null にする数値項目（未入力と0を区別するため） */
+function optionalInt({ min, max }: { min: number; max: number }) {
+  return z
+    .union([z.literal(""), z.coerce.number().int().min(min).max(max)])
+    .nullable()
+    .optional()
+    .transform((v) => (v === "" || v === undefined || v === null ? null : v));
+}
 
 /** 顧客マスタの管理（作成・編集） */
 export const customerInputSchema = z.object({
@@ -94,15 +127,7 @@ export const customerInputSchema = z.object({
   building: optionalText(100),
   phone: optionalText(30),
   mobilePhone: optionalText(30),
-  email: z
-    .string()
-    .trim()
-    .max(255)
-    .optional()
-    .transform((v) => (v ? v : undefined))
-    .refine((v) => v === undefined || z.email().safeParse(v).success, {
-      message: "メールアドレスの形式が正しくありません",
-    }),
+  email: optionalEmail(),
   licenseNumber: optionalText(50),
   note: optionalText(2000),
 });
@@ -123,19 +148,8 @@ export const vehicleInputSchema = z.object({
   modelName: z.string().trim().min(1, "モデル名を入力してください").max(100),
   vehicleNumber: optionalText(50),
   maker: optionalText(30),
-  displacement: z.coerce
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  modelYear: z.coerce
-    .number()
-    .int()
-    .min(1900)
-    .max(2100)
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+  displacement: optionalInt({ min: 1, max: 3000 }),
+  modelYear: optionalInt({ min: 1900, max: 2100 }),
   color: optionalText(30),
   registeredOn: optionalDate,
   inspectionExpiresOn: optionalDate,
@@ -237,15 +251,7 @@ export const shopSettingsInputSchema = z.object({
   phone: optionalText(30),
   fax: optionalText(30),
   website: optionalText(200),
-  email: z
-    .string()
-    .trim()
-    .max(255)
-    .optional()
-    .transform((v) => (v ? v : undefined))
-    .refine((v) => v === undefined || z.email().safeParse(v).success, {
-      message: "メールアドレスの形式が正しくありません",
-    }),
+  email: optionalEmail(),
   logoUrl: optionalText(500),
   taxRate: z.coerce.number().min(0).max(100),
   invoiceNumber: optionalText(50),
@@ -275,15 +281,7 @@ export const staffProfileInputSchema = z.object({
   building: optionalText(100),
   phone: optionalText(30),
   mobilePhone: optionalText(30),
-  email: z
-    .string()
-    .trim()
-    .max(255)
-    .optional()
-    .transform((v) => (v ? v : undefined))
-    .refine((v) => v === undefined || z.email().safeParse(v).success, {
-      message: "メールアドレスの形式が正しくありません",
-    }),
+  email: optionalEmail(),
   note: optionalText(2000),
 });
 

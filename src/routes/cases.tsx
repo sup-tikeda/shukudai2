@@ -180,7 +180,7 @@ function CasesPage() {
   async function handleDelete(row: CaseRow) {
     if (
       !window.confirm(
-        `「${row.title}」を削除しますか？（関連する見積・請求も削除されます）`,
+        `「${row.title}」を削除しますか？\n関連する見積・請求とその明細もすべて削除されます。`,
       )
     ) {
       return;

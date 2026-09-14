@@ -140,7 +140,7 @@ function CustomersPage() {
 
   async function handleDelete(customer: Customer) {
     if (
-      !window.confirm(`「${customer.name}」を削除しますか？（保有車両も削除されます）`)
+      !window.confirm(`「${customer.name}」を削除しますか？\n保有車両・案件・見積・請求もすべて削除されます。`)
     ) {
       return;
     }
@@ -278,6 +278,14 @@ function CustomersPage() {
             label="顧客名"
             required
             defaultValue={modal?.mode === "edit" ? modal.customer.name : ""}
+          />
+          {/* 法人のお客様のときに、窓口になる方の名前を入れる */}
+          <TextField
+            name="contactName"
+            label="担当者名（法人のお客様の場合）"
+            defaultValue={
+              modal?.mode === "edit" ? (modal.customer.contactName ?? "") : ""
+            }
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField
