@@ -27,6 +27,10 @@ export type QuoteSummary = {
  * 消費税は**税率ごとに税抜小計を積み上げてから1回だけ端数処理する**。
  * 明細1行ずつ丸めて足すと、行数が増えるほど正しい税額からずれていくため
  * （元のFileMaker側は行ごとに丸めており、数量が2以上のときに合計が合わなくなっていた）。
+ *
+ * 割引の明細は単価がマイナスで入るため、税抜小計がマイナスになることがある。
+ * `Math.round` はマイナス値だと0方向に寄る（`Math.round(-10.5) === -10`）ので、
+ * 絶対値で丸めてから符号を戻し、プラスのときと同じ丸め方に揃えている。
  */
 export function summarizeItems(items: SummarizableItem[]): QuoteSummary {
   const quantity = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -46,7 +50,7 @@ export function summarizeItems(items: SummarizableItem[]): QuoteSummary {
     .map(([rate, base]) => ({
       rate,
       base,
-      tax: Math.round(base * (rate / 100)),
+      tax: Math.sign(base) * Math.round(Math.abs(base * (rate / 100))),
     }));
 
   const tax = taxes.reduce((sum, row) => sum + row.tax, 0);

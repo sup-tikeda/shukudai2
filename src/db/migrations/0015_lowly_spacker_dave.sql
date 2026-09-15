@@ -1,0 +1,1 @@
+ALTER TABLE "work_items" ADD COLUMN "item_type" varchar(10) DEFAULT '通常' NOT NULL;

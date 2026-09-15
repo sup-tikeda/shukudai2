@@ -573,8 +573,14 @@ function QuoteItemForm({
 
   // 数量・単価・税率は入力欄自体は非制御のまま、workItemId を key に含めて
   // 選び直した時だけ既定値を入れ直す（それ以外では、手で直した値を保ったままにする）。
+  // 作業マスタの種別が「割引」なら、単価はマイナスにして明細へ取り込む
+  // （割引額そのものはマスタ側に0以上の値で登録されている）
   const priceDefault = selectedWorkItem
-    ? String(selectedWorkItem.unitPrice)
+    ? String(
+        selectedWorkItem.itemType === "割引"
+          ? -Math.abs(selectedWorkItem.unitPrice)
+          : selectedWorkItem.unitPrice,
+      )
     : String(item?.unitPrice ?? 0);
   const taxRateDefault = selectedWorkItem
     ? String(selectedWorkItem.taxRate)

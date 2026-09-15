@@ -63,4 +63,27 @@ describe("summarizeItems", () => {
 
     expect(summary.tax).toBe(21);
   });
+
+  it("割引の明細（単価がマイナス）は合計から差し引かれる", () => {
+    const summary = summarizeItems([
+      { quantity: 1, unitPrice: 10000, taxRate: 10 },
+      // 作業マスタで種別「割引」を選んだ明細は、単価がマイナスで入る
+      { quantity: 1, unitPrice: -1000, taxRate: 10 },
+    ]);
+
+    expect(summary.subtotal).toBe(9000);
+    expect(summary.tax).toBe(900);
+    expect(summary.total).toBe(9900);
+  });
+
+  it("割引だけの税率でも、プラスのときと同じ丸め方になる", () => {
+    // -105円の10%は-10.5円。Math.round のままだと0方向に寄って-10円になってしまう
+    const summary = summarizeItems([
+      { quantity: 1, unitPrice: -105, taxRate: 10 },
+    ]);
+
+    expect(summary.subtotal).toBe(-105);
+    expect(summary.tax).toBe(-11);
+    expect(summary.total).toBe(-116);
+  });
 });

@@ -17,6 +17,7 @@ import {
   shopSettingsInputSchema,
   staffProfileInputSchema,
   workItemInputSchema,
+  workItemTypeValues,
   workItemUpdateInputSchema,
 } from "~/lib/validation";
 import {
@@ -735,12 +736,23 @@ function WorkItemSection({
               ),
             },
             {
+              key: "itemType",
+              header: "種別",
+              render: (item: WorkItem) =>
+                item.itemType === "割引" ? (
+                  <Badge tone="accent">割引</Badge>
+                ) : (
+                  <span className="text-ink-faint">通常</span>
+                ),
+            },
+            {
               key: "unitPrice",
               header: "既定の単価（税抜）",
               align: "right",
               render: (item: WorkItem) => (
                 <span className="whitespace-nowrap tabular-nums">
-                  ¥{item.unitPrice.toLocaleString()}
+                  {item.itemType === "割引" ? "-" : ""}¥
+                  {item.unitPrice.toLocaleString()}
                 </span>
               ),
             },
@@ -796,6 +808,14 @@ function WorkItemSection({
             required
             defaultValue={modal?.mode === "edit" ? modal.item.name : ""}
           />
+          <SelectField
+            name="itemType"
+            label="種別"
+            options={workItemTypeValues.map((v) => ({ value: v, label: v }))}
+            defaultValue={
+              modal?.mode === "edit" ? modal.item.itemType : "通常"
+            }
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField
               name="unitPrice"
@@ -812,6 +832,10 @@ function WorkItemSection({
               }
             />
           </div>
+          <p className="text-xs text-ink-faint">
+            種別を「割引」にすると、単価はここで入力した金額そのまま（0以上）を割引額として登録し、
+            見積・請求の明細に取り込むときに自動でマイナス計算されます。
+          </p>
 
           {formError ? (
             <p className="text-sm text-danger" role="alert">

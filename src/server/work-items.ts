@@ -31,6 +31,7 @@ export const listWorkItemOptions = createServerFn({ method: "GET" }).handler(
         name: workItems.name,
         unitPrice: workItems.unitPrice,
         taxRate: workItems.taxRate,
+        itemType: workItems.itemType,
       })
       .from(workItems)
       .orderBy(asc(workItems.name));

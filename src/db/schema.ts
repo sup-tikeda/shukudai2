@@ -189,6 +189,9 @@ export const workItems = pgTable("work_items", {
   taxRate: numeric("tax_rate", { precision: 5, scale: 2, mode: "number" })
     .notNull()
     .default(10),
+  // "通常" | "割引"。割引の項目は、明細に取り込むときに単価の符号を反転してマイナス計算にする
+  // （ここに保存する単価そのものは常に0以上の「割引額」として持つ）
+  itemType: varchar("item_type", { length: 10 }).notNull().default("通常"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

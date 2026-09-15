@@ -225,7 +225,12 @@ export const quoteItemInputSchema = z.object({
   quoteId: z.uuid(),
   name: z.string().trim().min(1, "項目名を入力してください").max(100),
   quantity: z.coerce.number().int().min(1, "1以上の数値を入力してください"),
-  unitPrice: z.coerce.number().int().min(0, "0以上の数値を入力してください"),
+  // 作業マスタで「割引」を選ぶとマイナス値が入るため、明細の単価はマイナスも許容する
+  unitPrice: z.coerce
+    .number()
+    .int()
+    .min(-100000000, "数値を入力してください")
+    .max(100000000, "数値を入力してください"),
   // 軽減税率（8%）の品目が混ざっても正しく計算できるよう、明細ごとに持つ
   taxRate: z.coerce.number().min(0).max(100),
 });
@@ -243,10 +248,15 @@ export const quoteItemIdSchema = z.object({
 });
 
 /** 作業マスタ（明細のよく使う項目）の管理 */
+export const workItemTypeValues = ["通常", "割引"] as const;
+
 export const workItemInputSchema = z.object({
   name: z.string().trim().min(1, "項目名を入力してください").max(100),
+  // 割引項目でもここは「割引額」として0以上で入力する。マイナス計算への変換は
+  // 明細に取り込むタイミング（種別が「割引」かどうか）で行う。
   unitPrice: z.coerce.number().int().min(0, "0以上の数値を入力してください"),
   taxRate: z.coerce.number().min(0).max(100),
+  itemType: z.enum(workItemTypeValues),
 });
 
 export type WorkItemInput = z.infer<typeof workItemInputSchema>;

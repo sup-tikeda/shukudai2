@@ -273,6 +273,7 @@ await db.insert(workItems).values([
   { name: "ブレーキパッド交換", unitPrice: 3000 },
   { name: "マフラー本体", unitPrice: 45000 },
   { name: "取付工賃", unitPrice: 8000 },
+  { name: "常連様割引", unitPrice: 1000, itemType: "割引" },
 ]);
 
 // 店舗設定は全体で1レコードのみ（DB側にも制約がある）。
