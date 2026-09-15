@@ -641,7 +641,7 @@ export function DetailItem({
   wide?: boolean;
 }) {
   return (
-    <div className={wide ? "sm:col-span-2 xl:col-span-3" : undefined}>
+    <div className={wide ? "sm:col-span-2" : undefined}>
       <dt className="text-xs font-medium tracking-wide text-ink-faint uppercase">
         {label}
       </dt>
@@ -654,8 +654,10 @@ export function DetailItem({
 
 export function DetailList({ children }: { children: ReactNode }) {
   return (
-    // 画面が広いときは3列にして、幅いっぱいの本文でも項目が間延びしないようにする
-    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-2 xl:grid-cols-3">
+    // 本文の横幅には上限が無いため、列数を増やすだけだと広い画面で
+    // ラベルと値のペアが間延びして見える（列自体が広くなりすぎるため）。
+    // ここだけ幅の上限を決め、列を増やしても項目がまとまって見えるようにする。
+    <dl className="grid max-w-3xl grid-cols-1 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-2">
       {children}
     </dl>
   );
