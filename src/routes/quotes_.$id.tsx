@@ -40,6 +40,11 @@ export const Route = createFileRoute("/quotes_/$id")({
 type QuoteDetail = Awaited<ReturnType<typeof getQuote>>;
 type QuoteItemRow = QuoteDetail["items"][number];
 
+/** 金額表示。割引の明細はマイナスになるため、記号は「¥」の前に出す（¥-200 ではなく -¥200） */
+function yen(value: number) {
+  return `${value < 0 ? "-" : ""}¥${Math.abs(value).toLocaleString()}`;
+}
+
 function QuoteDetailPage() {
   const { quote, workItemOptions } = Route.useLoaderData();
   const router = useRouter();
@@ -63,12 +68,23 @@ function QuoteDetailPage() {
     if (!modal) return;
     const formData = Object.fromEntries(new FormData(event.currentTarget));
 
+    // 作業マスタで「割引」を選んだ明細は、入力された金額をマイナスにして保存する。
+    // マスタの金額は既定値にすぎないため、手で直した金額にも同じように符号を付ける。
+    const selectedWorkItem = workItemOptions.find(
+      (w) => w.id === formData.workItemId,
+    );
+    const entered = Number(formData.unitPrice);
+    const values =
+      selectedWorkItem?.itemType === "割引" && Number.isFinite(entered)
+        ? { ...formData, unitPrice: -Math.abs(entered) }
+        : formData;
+
     setFormError(null);
     setPending(true);
     try {
       if (modal.mode === "create") {
         const parsed = quoteItemInputSchema.safeParse({
-          ...formData,
+          ...values,
           quoteId: quote.id,
         });
         if (!parsed.success) {
@@ -80,7 +96,7 @@ function QuoteDetailPage() {
         await createQuoteItem({ data: parsed.data });
       } else {
         const parsed = quoteItemUpdateInputSchema.safeParse({
-          ...formData,
+          ...values,
           id: modal.item.id,
         });
         if (!parsed.success) {
@@ -392,7 +408,7 @@ function QuoteDetailPage() {
                 align: "right",
                 render: (item: QuoteItemRow) => (
                   <span className="whitespace-nowrap tabular-nums">
-                    ¥{item.unitPrice.toLocaleString()}
+                    {yen(item.unitPrice)}
                   </span>
                 ),
               },
@@ -412,7 +428,7 @@ function QuoteDetailPage() {
                 align: "right",
                 render: (item: QuoteItemRow) => (
                   <span className="whitespace-nowrap font-bold tabular-nums">
-                    ¥{(item.quantity * item.unitPrice).toLocaleString()}
+                    {yen(item.quantity * item.unitPrice)}
                   </span>
                 ),
               },
@@ -565,26 +581,28 @@ function QuoteItemForm({
     ? workItemOptions.find((w) => w.name === item.name)
     : undefined;
 
-  const [workItemId, setWorkItemId] = useState(
-    matchedWorkItem ? matchedWorkItem.id : CUSTOM_WORK_ITEM,
-  );
+  const initialWorkItemId = matchedWorkItem
+    ? matchedWorkItem.id
+    : CUSTOM_WORK_ITEM;
+  const [workItemId, setWorkItemId] = useState(initialWorkItemId);
   const isCustom = workItemId === CUSTOM_WORK_ITEM;
   const selectedWorkItem = workItemOptions.find((w) => w.id === workItemId);
+  const isDiscount = selectedWorkItem?.itemType === "割引";
 
-  // 数量・単価・税率は入力欄自体は非制御のまま、workItemId を key に含めて
-  // 選び直した時だけ既定値を入れ直す（それ以外では、手で直した値を保ったままにする）。
-  // 作業マスタの種別が「割引」なら、単価はマイナスにして明細へ取り込む
-  // （割引額そのものはマスタ側に0以上の値で登録されている）
-  const priceDefault = selectedWorkItem
-    ? String(
-        selectedWorkItem.itemType === "割引"
-          ? -Math.abs(selectedWorkItem.unitPrice)
-          : selectedWorkItem.unitPrice,
-      )
-    : String(item?.unitPrice ?? 0);
-  const taxRateDefault = selectedWorkItem
-    ? String(selectedWorkItem.taxRate)
-    : String(item?.taxRate ?? defaultTaxRate);
+  // 数量・単価・税率の入力欄は非制御のまま、workItemId を key に含めて
+  // 項目を選び直した時だけ既定値を入れ直す。
+  // 作業マスタの金額はあくまで既定値なので、編集で開いた直後は
+  // 保存されている金額（手で直した金額）をそのまま出す。
+  const reselected = workItemId !== initialWorkItemId;
+  const priceDefault =
+    reselected || !item
+      ? String(selectedWorkItem?.unitPrice ?? item?.unitPrice ?? 0)
+      : // 割引の明細はマイナスで保存しているが、入力欄には割引額（プラス）で見せる
+        String(isDiscount ? Math.abs(item.unitPrice) : item.unitPrice);
+  const taxRateDefault =
+    reselected || !item
+      ? String(selectedWorkItem?.taxRate ?? item?.taxRate ?? defaultTaxRate)
+      : String(item.taxRate);
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -619,10 +637,15 @@ function QuoteItemForm({
         <TextField
           key={`unitPrice-${workItemId}`}
           name="unitPrice"
-          label="税抜単価"
+          label={isDiscount ? "割引額（税抜）" : "税抜単価"}
           defaultValue={priceDefault}
         />
       </div>
+      {isDiscount ? (
+        <p className="text-xs text-ink-faint">
+          割引の項目です。ここに入れた金額が合計から差し引かれます。
+        </p>
+      ) : null}
       {/* 軽減税率の品目が混ざる場合に備え、明細ごとに税率を持たせている */}
       <TextField
         key={`taxRate-${workItemId}`}
