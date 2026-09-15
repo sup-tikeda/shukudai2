@@ -650,14 +650,16 @@ export function DetailItem({
   wide?: boolean;
 }) {
   return (
+    // 余白・文字サイズは DataTable の行（px-3 py-2 / text-[13px]）と揃え、
+    // 高さも一覧の表と同じ密度になるようにしている。
     <tr className="border-b border-line last:border-b-0">
       <th
         scope="row"
-        className="w-36 shrink-0 border-r border-line bg-surface-raised px-4 py-2.5 text-left align-top text-xs font-bold tracking-wide whitespace-nowrap text-ink-faint"
+        className="w-32 shrink-0 border-r border-line bg-surface-raised px-3 py-2 text-left align-top text-[11px] font-bold tracking-wide whitespace-nowrap text-ink-faint"
       >
         {label}
       </th>
-      <td className="px-4 py-2.5 align-top break-words whitespace-pre-wrap">
+      <td className="px-3 py-2 align-top text-[13px] break-words whitespace-pre-wrap">
         {children || <span className="text-ink-faint">-</span>}
       </td>
     </tr>
@@ -666,10 +668,13 @@ export function DetailItem({
 
 export function DetailList({ children }: { children: ReactNode }) {
   return (
-    // ラベルと値の短い組を並べるだけなので、幅いっぱいまで広げる意味は薄い。
-    // max-w-3xl で上限を決め、狭い画面では表を横スクロールさせる。
+    // w-full や min-w は付けない。どちらも「値」の列に余った幅を押し付け、
+    // 短い値（電話番号など）の右側にだけ大きな空白ができる原因になるため。
+    // 幅を指定しない表は中身の長さに合わせて縮む（HTMLの既定の挙動）ので、
+    // 中身が短ければ表そのものも小さくなる。長い住所などが来た時のために
+    // max-w-3xl で上限だけ決めておく。
     <div className="overflow-x-auto px-5 py-5">
-      <table className="w-full max-w-3xl min-w-[24rem] border-collapse border border-line text-sm">
+      <table className="max-w-3xl border-collapse border border-line">
         <tbody>{children}</tbody>
       </table>
     </div>
