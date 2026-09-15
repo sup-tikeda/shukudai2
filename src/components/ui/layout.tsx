@@ -650,13 +650,21 @@ export function DetailItem(_props: DetailItemProps) {
   return null;
 }
 
+/** 1行に並べる組数の上限。項目数がどれだけ多くても、これ以上は横に並べない。 */
+const DETAIL_LIST_MAX_ITEMS_PER_ROW = 4;
+
 /**
  * `DetailItem`を受け取り、ラベル｜値の表（`DataTable`と同じ体裁）に組み立てる。
  *
- * - 通常の項目は**2つずつ横に並べて1行**にする（ラベル｜値｜ラベル｜値）。
- *   項目数が多くても縦に間延びしないようにするため。
+ * - **通常の項目（`wide`でないもの）は、ひとまとまりで2段（2行）に収まるように
+ *   横へ並べる**。項目数が多い画面（車両情報など）ほど1行に並べる組数を増やし、
+ *   少ない画面はこれまでどおり2組のままにする。1行に並べる組数は、`wide`で
+ *   区切られた「通常の項目が連続する区間」のうちいちばん長いものを基準に、
+ *   画面全体で1つに揃える（区間ごとに列数が変わると、表の列が縦にずれて
+ *   見えるため）。
  * - `wide`の項目（住所・備考など長文になりうるもの）は単独で1行にし、
- *   値の列を残り全部（3列ぶん）まで広げる。
+ *   値の列を残り全部まで広げる。
+ * - 半端な人数で1行に満たなかった最後の組も、同様に値の列を広げて埋める。
  */
 export function DetailList({ children }: { children: ReactNode }) {
   const items = Children.toArray(children).filter(
@@ -664,7 +672,26 @@ export function DetailList({ children }: { children: ReactNode }) {
       isValidElement(child) && child.type === DetailItem,
   );
 
-  // 通常の項目は2つずつの組に、wideの項目は単独の組にまとめる
+  // 「通常の項目が連続する区間」のうちいちばん長いものを求める
+  let longestRun = 0;
+  let currentRun = 0;
+  for (const item of items) {
+    if (item.props.wide) {
+      longestRun = Math.max(longestRun, currentRun);
+      currentRun = 0;
+    } else {
+      currentRun++;
+    }
+  }
+  longestRun = Math.max(longestRun, currentRun);
+
+  // その区間を2段に収めるための、1行あたりの組数
+  const itemsPerRow = Math.min(
+    DETAIL_LIST_MAX_ITEMS_PER_ROW,
+    Math.max(1, Math.ceil(longestRun / 2)),
+  );
+
+  // 通常の項目は itemsPerRow 個ずつの組に、wide の項目は単独の組にまとめる
   const rows: ReactElement<DetailItemProps>[][] = [];
   let pending: ReactElement<DetailItemProps>[] = [];
   for (const item of items) {
@@ -674,7 +701,7 @@ export function DetailList({ children }: { children: ReactNode }) {
       rows.push([item]);
     } else {
       pending.push(item);
-      if (pending.length === 2) {
+      if (pending.length === itemsPerRow) {
         rows.push(pending);
         pending = [];
       }
@@ -686,15 +713,22 @@ export function DetailList({ children }: { children: ReactNode }) {
     // 表に w-full は付けない。付けると値の列に余った幅が押し付けられ、
     // 短い値（電話番号など）の右側にだけ大きな空白ができてしまうため。
     // 幅を指定しない表は中身の長さに合わせて縮む（HTMLの既定の挙動）ので、
-    // 値が短ければ表そのものも小さくなる。長い住所などが来た時のために
-    // max-w-4xl だけ上限として残す（2つ組の分、単独項目より広めにしている）。
+    // 値が短ければ表そのものも小さくなる。項目を横に並べるほど自然と幅は
+    // 広がるので、これで「横に広げる」意図と両立できる。長い住所などが
+    // 来た時のために max-w-6xl だけ上限として残す。
     <div className="overflow-x-auto px-5 py-5">
-      <table className="max-w-4xl border-collapse border border-line">
+      <table className="max-w-6xl border-collapse border border-line">
         <tbody>
           {rows.map((row, rowIndex) => (
             <tr key={rowIndex} className="border-b border-line last:border-b-0">
               {row.map((item, itemIndex) => {
                 const isLastInRow = itemIndex === row.length - 1;
+                // 1行に満たなかった分は、最後の項目の値の列で埋める
+                const remainingSlots = itemsPerRow - row.length;
+                const colSpan =
+                  isLastInRow && remainingSlots > 0
+                    ? 1 + remainingSlots * 2
+                    : undefined;
                 return (
                   <Fragment key={item.props.label}>
                     <th
@@ -704,9 +738,7 @@ export function DetailList({ children }: { children: ReactNode }) {
                       {item.props.label}
                     </th>
                     <td
-                      // 単独の組（wide、または2つに満たなかった残り1件）は、
-                      // 空いた右側の列も含めて値の列いっぱいに広げる
-                      colSpan={row.length === 1 ? 3 : undefined}
+                      colSpan={colSpan}
                       className={[
                         "px-3 py-2 align-top text-[13px] break-words whitespace-pre-wrap",
                         isLastInRow ? "" : "border-r border-line",
