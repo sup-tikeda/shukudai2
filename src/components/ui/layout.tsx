@@ -630,36 +630,49 @@ export function docTypeTone(docType: string): BadgeTone {
   return docType === "請求書" ? "accent" : "info";
 }
 
-/** 詳細画面の項目。値が無いときは「-」を出す。 */
+/**
+ * 詳細画面の項目。値が無いときは「-」を出す。
+ *
+ * `DataTable`（一覧の表）と見た目を揃え、ラベル｜値の1行の表として描画する
+ * （以前はラベルを上・値を下に積む2列グリッドだったが、一覧の表と体裁が
+ * 揃っていないと分かりづらいため統一した）。
+ *
+ * `wide` は以前「2列ぶんの幅を使う」ためのものだったが、1列の表になったので
+ * 意味を持たない。呼び出し側（顧客・車両・案件の各詳細画面）を変えずに済むよう、
+ * 受け取りはするが何もしない。
+ */
 export function DetailItem({
   label,
   children,
-  wide,
 }: {
   label: string;
   children?: ReactNode;
   wide?: boolean;
 }) {
   return (
-    <div className={wide ? "sm:col-span-2" : undefined}>
-      <dt className="text-xs font-medium tracking-wide text-ink-faint uppercase">
+    <tr className="border-b border-line last:border-b-0">
+      <th
+        scope="row"
+        className="w-36 shrink-0 border-r border-line bg-surface-raised px-4 py-2.5 text-left align-top text-xs font-bold tracking-wide whitespace-nowrap text-ink-faint"
+      >
         {label}
-      </dt>
-      <dd className="mt-0.5 text-sm break-words whitespace-pre-wrap">
+      </th>
+      <td className="px-4 py-2.5 align-top break-words whitespace-pre-wrap">
         {children || <span className="text-ink-faint">-</span>}
-      </dd>
-    </div>
+      </td>
+    </tr>
   );
 }
 
 export function DetailList({ children }: { children: ReactNode }) {
   return (
-    // 本文の横幅には上限が無いため、列数を増やすだけだと広い画面で
-    // ラベルと値のペアが間延びして見える（列自体が広くなりすぎるため）。
-    // ここだけ幅の上限を決め、列を増やしても項目がまとまって見えるようにする。
-    <dl className="grid max-w-3xl grid-cols-1 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-2">
-      {children}
-    </dl>
+    // ラベルと値の短い組を並べるだけなので、幅いっぱいまで広げる意味は薄い。
+    // max-w-3xl で上限を決め、狭い画面では表を横スクロールさせる。
+    <div className="overflow-x-auto px-5 py-5">
+      <table className="w-full max-w-3xl min-w-[24rem] border-collapse border border-line text-sm">
+        <tbody>{children}</tbody>
+      </table>
+    </div>
   );
 }
 
