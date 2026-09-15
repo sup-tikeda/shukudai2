@@ -586,10 +586,7 @@ function QuoteItemForm({
         name="workItemId"
         label="項目名"
         options={[
-          ...workItemOptions.map((w) => ({
-            value: w.id,
-            label: `${w.name}（¥${w.unitPrice.toLocaleString()}・${w.taxRate}%）`,
-          })),
+          ...workItemOptions.map((w) => ({ value: w.id, label: w.name })),
           { value: CUSTOM_WORK_ITEM, label: "その他（自由入力）" },
         ]}
         value={workItemId}
