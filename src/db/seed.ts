@@ -12,6 +12,7 @@ import {
   staffProfiles,
   user,
   vehicles,
+  workItems,
 } from "./schema";
 
 // Node で直接実行するスクリプトのため、`~/lib/db` は使わず自前で接続を作る
@@ -252,6 +253,26 @@ await db.insert(quoteItems).values([
 
   { quoteId: quote6.id, name: "エンジンオイル交換工賃", quantity: 1, unitPrice: 3000 },
   { quoteId: quote6.id, name: "エンジンオイル（1L）", quantity: 1, unitPrice: 1500 },
+]);
+
+// 作業マスタ：上の明細でよく出てくる項目をあらかじめ登録しておく
+// （同じ内容が複数の明細に出てくるものは、代表して1件にまとめてある）。
+await db.insert(workItems).values([
+  { name: "エンジンオイル交換工賃", unitPrice: 3000 },
+  { name: "エンジンオイル（1L）", unitPrice: 1500 },
+  { name: "エンジンオイル（4L）", unitPrice: 4000 },
+  { name: "点検基本料", unitPrice: 2000 },
+  { name: "タイヤ（前輪）", unitPrice: 12000 },
+  { name: "タイヤ（後輪）", unitPrice: 15000 },
+  { name: "タイヤ交換工賃", unitPrice: 2000 },
+  { name: "バッテリー本体", unitPrice: 8000 },
+  { name: "交換工賃", unitPrice: 1500 },
+  { name: "車検基本料", unitPrice: 20000 },
+  { name: "自賠責保険料", unitPrice: 9000, taxRate: 0 },
+  { name: "重量税", unitPrice: 5000, taxRate: 0 },
+  { name: "ブレーキパッド交換", unitPrice: 3000 },
+  { name: "マフラー本体", unitPrice: 45000 },
+  { name: "取付工賃", unitPrice: 8000 },
 ]);
 
 // 店舗設定は全体で1レコードのみ（DB側にも制約がある）。
