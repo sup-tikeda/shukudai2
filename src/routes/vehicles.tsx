@@ -373,8 +373,9 @@ function VehiclesPage() {
             defaultValue={
               modal?.mode === "edit"
                 ? modal.vehicle.customerId
-                : (presetCustomerId ?? customerSelectOptions[0]?.value)
+                : (presetCustomerId ?? "")
             }
+            placeholder="選択してください"
           />
           <TextField
             name="modelName"

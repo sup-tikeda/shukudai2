@@ -210,6 +210,22 @@ export const quoteInputSchema = z.object({
 
 export type QuoteInput = z.infer<typeof quoteInputSchema>;
 
+/**
+ * 見積・請求画面からの新規作成。
+ *
+ * 来店したその場で見積を出すとき、案件を先に登録してから見積を作るのは二度手間になる。
+ * そのため対象車両と案件名を受け取り、案件を作ってから見積・請求を作る。
+ * すでにある案件に追加で作る場合（案件詳細の「＋」）は `quoteInputSchema` を使う。
+ */
+export const quoteWithNewCaseInputSchema = quoteInputSchema
+  .omit({ caseId: true })
+  .extend({
+    vehicleId: z.uuid("対象の車両を選択してください"),
+    caseTitle: z.string().trim().min(1, "案件名を入力してください").max(100),
+  });
+
+export type QuoteWithNewCaseInput = z.infer<typeof quoteWithNewCaseInputSchema>;
+
 /** 編集時のみ発行日（作成日）を直せる。月末締めで前月日付の請求書を出すことがあるため */
 export const quoteUpdateInputSchema = quoteInputSchema.extend({
   id: z.uuid(),

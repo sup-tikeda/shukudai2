@@ -618,6 +618,19 @@ export function RemainingDaysLabel({ endOn }: { endOn: string }) {
   return <span className={`ml-2 ${tone}`}>{text}</span>;
 }
 
+/**
+ * 車両の表示名。同じ車種を複数台持っている顧客がいるため、
+ * 車両番号が入っていれば添えて見分けられるようにする（選択肢・確認表示で共通に使う）。
+ */
+export function vehicleLabel(vehicle: {
+  modelName: string;
+  vehicleNumber: string | null;
+}) {
+  return vehicle.vehicleNumber
+    ? `${vehicle.modelName}（${vehicle.vehicleNumber}）`
+    : vehicle.modelName;
+}
+
 /** 検索語がどれかの項目に含まれるかを判定する（大文字小文字は区別しない） */
 export function matchesQuery(query: string, values: (string | null | undefined)[]) {
   const needle = query.trim().toLowerCase();

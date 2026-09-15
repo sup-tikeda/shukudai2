@@ -11,6 +11,7 @@ import {
   PageHeader,
   RemainingDaysLabel,
   statusTone,
+  vehicleLabel,
 } from "~/components/ui/layout";
 import {
   caseInputSchema,
@@ -25,6 +26,7 @@ import {
   updateCase,
 } from "~/server/cases";
 import { listStaffOptions } from "~/server/accounts";
+import { listCustomerOptions } from "~/server/customers";
 import { listVehicleOptions } from "~/server/vehicles";
 
 export const Route = createFileRoute("/cases")({
@@ -34,6 +36,7 @@ export const Route = createFileRoute("/cases")({
     typeof search.new === "string" ? { new: search.new } : {},
   loader: async () => ({
     cases: await listCases(),
+    customerOptions: await listCustomerOptions(),
     vehicleOptions: await listVehicleOptions(),
     staff: await listStaffOptions(),
   }),
@@ -67,7 +70,8 @@ function assigneeOptions(
 }
 
 function CasesPage() {
-  const { cases, vehicleOptions, staff } = Route.useLoaderData();
+  const { cases, customerOptions, vehicleOptions, staff } =
+    Route.useLoaderData();
   const { new: presetVehicleId } = Route.useSearch();
   const router = useRouter();
 
@@ -195,11 +199,6 @@ function CasesPage() {
       setListError("削除に失敗しました。");
     }
   }
-
-  const vehicleSelectOptions = vehicleOptions.map((v) => ({
-    value: v.id,
-    label: `${v.modelName}（${v.customerName}）`,
-  }));
 
   return (
     // 見出しと絞り込みは固定し、一覧の中だけをスクロールさせる
@@ -377,97 +376,158 @@ function CasesPage() {
         onOpenChange={(open) => !open && setModal(null)}
         title={modal?.mode === "edit" ? "案件を編集" : "案件を新規作成"}
       >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <SelectField
-            name="vehicleId"
-            label="対象車両"
-            options={vehicleSelectOptions}
-            defaultValue={
-              modal?.mode === "edit"
-                ? modal.item.vehicleId
-                : (presetVehicleId ?? vehicleSelectOptions[0]?.value)
-            }
-          />
-          <TextField
-            name="title"
-            label="案件名"
-            required
-            defaultValue={modal?.mode === "edit" ? modal.item.title : ""}
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <SelectField
-              name="status"
-              label="ステータス"
-              options={caseStatusValues.map((v) => ({ value: v, label: v }))}
-              defaultValue={modal?.mode === "edit" ? modal.item.status : "未作業"}
-            />
-            <SelectField
-              name="assignee"
-              label="担当者"
-              // 選択肢は社員マスタ（設定画面）の名前
-              options={assigneeOptions(
-                staff,
-                modal?.mode === "edit" ? modal.item.assignee : null,
-              )}
-              defaultValue={
-                modal?.mode === "edit" ? (modal.item.assignee ?? "") : ""
-              }
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <TextField
-              name="plannedStartOn"
-              label="開始予定日"
-              type="date"
-              defaultValue={
-                modal?.mode === "edit" ? (modal.item.plannedStartOn ?? "") : ""
-              }
-            />
-            <TextField
-              name="plannedEndOn"
-              label="終了予定日"
-              type="date"
-              defaultValue={
-                modal?.mode === "edit" ? (modal.item.plannedEndOn ?? "") : ""
-              }
-            />
-          </div>
-          <TextField
-            name="content"
-            label="案件内容"
-            multiline
-            rows={3}
-            defaultValue={modal?.mode === "edit" ? (modal.item.content ?? "") : ""}
-          />
-          <TextField
-            name="workContent"
-            label="作業内容"
-            multiline
-            rows={3}
-            defaultValue={
-              modal?.mode === "edit" ? (modal.item.workContent ?? "") : ""
-            }
-          />
-          <TextField
-            name="note"
-            label="備考"
-            multiline
-            rows={2}
-            defaultValue={modal?.mode === "edit" ? (modal.item.note ?? "") : ""}
-          />
-
-          {formError ? (
-            <p className="text-sm text-danger" role="alert">
-              {formError}
-            </p>
-          ) : null}
-
-          <button type="submit" className={button()} disabled={pending}>
-            {pending ? "保存中..." : "保存"}
-          </button>
-        </form>
+        <CaseForm
+          item={modal?.mode === "edit" ? modal.item : undefined}
+          presetVehicleId={presetVehicleId}
+          customerOptions={customerOptions}
+          vehicleOptions={vehicleOptions}
+          staff={staff}
+          pending={pending}
+          formError={formError}
+          onSubmit={handleSubmit}
+        />
       </Modal>
     </AppShell>
+  );
+}
+
+type CustomerOption = Awaited<ReturnType<typeof listCustomerOptions>>[number];
+type VehicleOption = Awaited<ReturnType<typeof listVehicleOptions>>[number];
+
+/**
+ * 案件の登録・編集フォーム。
+ *
+ * 車両は顧客に紐づくため、まず顧客を選び、その顧客の車両だけを対象車両に出す。
+ * 全車両を1つの選択肢に並べると、同じ車種が並んだときに別の顧客の車両を
+ * 選んでしまうため。
+ */
+function CaseForm({
+  item,
+  presetVehicleId,
+  customerOptions,
+  vehicleOptions,
+  staff,
+  pending,
+  formError,
+  onSubmit,
+}: {
+  item?: CaseDetail;
+  presetVehicleId?: string;
+  customerOptions: CustomerOption[];
+  vehicleOptions: VehicleOption[];
+  staff: { name: string }[];
+  pending: boolean;
+  formError: string | null;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  // 編集時と、車両詳細の「＋」から来た時は、その車両の顧客まで選んだ状態で開く
+  const initialVehicle = vehicleOptions.find(
+    (v) => v.id === (item?.vehicleId ?? presetVehicleId),
+  );
+  const [customerId, setCustomerId] = useState(
+    initialVehicle?.customerId ?? "",
+  );
+  const [vehicleId, setVehicleId] = useState(initialVehicle?.id ?? "");
+
+  const vehicleChoices = vehicleOptions
+    .filter((v) => v.customerId === customerId)
+    .map((v) => ({ value: v.id, label: vehicleLabel(v) }));
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <SelectField
+        // 車両を絞るためだけの欄。案件が持つのは車両だけ（顧客は車両から決まる）
+        name="filterCustomerId"
+        label="顧客"
+        options={customerOptions.map((c) => ({ value: c.id, label: c.name }))}
+        placeholder="選択してください"
+        value={customerId}
+        onChange={(next) => {
+          setCustomerId(next);
+          setVehicleId("");
+        }}
+      />
+      <SelectField
+        name="vehicleId"
+        label="対象車両"
+        options={vehicleChoices}
+        placeholder={
+          customerId
+            ? vehicleChoices.length > 0
+              ? "選択してください"
+              : "この顧客に車両が登録されていません"
+            : "先に顧客を選んでください"
+        }
+        value={vehicleId}
+        onChange={setVehicleId}
+      />
+      <TextField
+        name="title"
+        label="案件名"
+        required
+        defaultValue={item?.title ?? ""}
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <SelectField
+          name="status"
+          label="ステータス"
+          options={caseStatusValues.map((v) => ({ value: v, label: v }))}
+          defaultValue={item?.status ?? "未作業"}
+        />
+        <SelectField
+          name="assignee"
+          label="担当者"
+          // 選択肢は社員マスタ（設定画面）の名前
+          options={assigneeOptions(staff, item?.assignee)}
+          defaultValue={item?.assignee ?? ""}
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <TextField
+          name="plannedStartOn"
+          label="開始予定日"
+          type="date"
+          defaultValue={item?.plannedStartOn ?? ""}
+        />
+        <TextField
+          name="plannedEndOn"
+          label="終了予定日"
+          type="date"
+          defaultValue={item?.plannedEndOn ?? ""}
+        />
+      </div>
+      <TextField
+        name="content"
+        label="案件内容"
+        multiline
+        rows={3}
+        defaultValue={item?.content ?? ""}
+      />
+      <TextField
+        name="workContent"
+        label="作業内容"
+        multiline
+        rows={3}
+        defaultValue={item?.workContent ?? ""}
+      />
+      <TextField
+        name="note"
+        label="備考"
+        multiline
+        rows={2}
+        defaultValue={item?.note ?? ""}
+      />
+
+      {formError ? (
+        <p className="text-sm text-danger" role="alert">
+          {formError}
+        </p>
+      ) : null}
+
+      <button type="submit" className={button()} disabled={pending}>
+        {pending ? "保存中..." : "保存"}
+      </button>
+    </form>
   );
 }
 

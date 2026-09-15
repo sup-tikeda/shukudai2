@@ -46,15 +46,24 @@ export const listCaseOptions = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireSession();
 
+    // 見積・請求の作成フォームで「顧客 → 車両 → 案件」と絞り込んで選べるよう、
+    // 名前だけでなく顧客・車両のIDも返す。同じ案件名が並ぶ場合に見分けられるよう
+    // 案件番号も添える。
     return db
       .select({
         id: cases.id,
+        caseNumber: cases.caseNumber,
         title: cases.title,
+        vehicleId: cases.vehicleId,
         vehicleName: vehicles.modelName,
+        vehicleNumber: vehicles.vehicleNumber,
+        customerId: vehicles.customerId,
+        customerName: customers.name,
       })
       .from(cases)
       .innerJoin(vehicles, eq(cases.vehicleId, vehicles.id))
-      .orderBy(asc(cases.title));
+      .innerJoin(customers, eq(vehicles.customerId, customers.id))
+      .orderBy(asc(cases.title), asc(cases.caseNumber));
   },
 );
 

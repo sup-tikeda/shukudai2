@@ -112,6 +112,18 @@ type SelectFieldProps = {
   options: { value: string; label: string }[];
   defaultValue?: string;
   required?: boolean;
+  /**
+   * 未選択の状態から選ばせたい時に、先頭へ置く空の項目（「選択してください」など）。
+   * 指定しないと最初の選択肢が既定で選ばれた状態になるため、
+   * 相手（顧客・車両・案件）を指定する欄では必ず渡すこと。
+   */
+  placeholder?: string;
+  /**
+   * 選択を親が持つ場合に使う（顧客を選ぶと車両の選択肢が変わる、といった連動のため）。
+   * `value` と `onChange` は両方セットで渡す。渡さなければ `defaultValue` の非制御。
+   */
+  value?: string;
+  onChange?: (value: string) => void;
 };
 
 export function SelectField({
@@ -120,14 +132,24 @@ export function SelectField({
   options,
   defaultValue,
   required,
+  placeholder,
+  value,
+  onChange,
 }: SelectFieldProps) {
+  // 制御と非制御が混ざるとReactが警告を出すため、どちらか一方の属性だけを渡す
+  const controlProps =
+    value !== undefined && onChange
+      ? { value, onChange: (event: React.ChangeEvent<HTMLSelectElement>) => onChange(event.target.value) }
+      : { defaultValue };
+
   return (
     <Field.Root required={required} className="flex flex-col gap-1.5">
       <Field.Label className={label()}>
         {labelText}
         <Field.RequiredIndicator className="ml-1 text-accent" />
       </Field.Label>
-      <select name={name} defaultValue={defaultValue} className={control()}>
+      <select name={name} className={control()} {...controlProps}>
+        {placeholder ? <option value="">{placeholder}</option> : null}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

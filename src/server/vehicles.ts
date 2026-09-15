@@ -40,15 +40,20 @@ export const listVehicleOptions = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireSession();
 
+    // 案件の作成フォームで「顧客 → 車両」と絞り込んで選べるよう顧客IDも返す。
+    // 同じ車種を複数台持っている顧客がいるため、車両番号も返して見分けられるようにする。
     return db
       .select({
         id: vehicles.id,
         modelName: vehicles.modelName,
+        vehicleNumber: vehicles.vehicleNumber,
+        customerId: vehicles.customerId,
         customerName: customers.name,
       })
       .from(vehicles)
       .innerJoin(customers, eq(vehicles.customerId, customers.id))
-      .orderBy(asc(vehicles.modelName));
+      // 所有者から探すことが多いので、顧客名 → 車種の順に並べる
+      .orderBy(asc(customers.name), asc(vehicles.modelName));
   },
 );
 

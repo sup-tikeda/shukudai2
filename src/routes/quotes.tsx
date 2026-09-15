@@ -10,11 +10,22 @@ import {
   ListToolbar,
   matchesQuery,
   PageHeader,
+  vehicleLabel,
 } from "~/components/ui/layout";
-import { quoteDocTypeValues, quoteInputSchema } from "~/lib/validation";
+import {
+  quoteDocTypeValues,
+  quoteInputSchema,
+  quoteWithNewCaseInputSchema,
+} from "~/lib/validation";
 import { listCaseOptions } from "~/server/cases";
-import { createQuote, listQuotes } from "~/server/quotes";
+import { listCustomerOptions } from "~/server/customers";
+import {
+  createQuote,
+  createQuoteWithNewCase,
+  listQuotes,
+} from "~/server/quotes";
 import { getDefaultTaxRate } from "~/server/shopSettings";
+import { listVehicleOptions } from "~/server/vehicles";
 
 export const Route = createFileRoute("/quotes")({
   // 案件詳細から «＋ 見積・請求を作成» で来た時、その案件を選んだ状態でフォームを開くため
@@ -23,14 +34,23 @@ export const Route = createFileRoute("/quotes")({
     typeof search.new === "string" ? { new: search.new } : {},
   loader: async () => ({
     quotes: await listQuotes(),
+    // 案件詳細の「＋」から来た時に、その案件の顧客・車両を表示するために使う
     caseOptions: await listCaseOptions(),
+    customerOptions: await listCustomerOptions(),
+    vehicleOptions: await listVehicleOptions(),
     defaultTaxRate: await getDefaultTaxRate(),
   }),
   component: QuotesPage,
 });
 
 function QuotesPage() {
-  const { quotes, caseOptions, defaultTaxRate } = Route.useLoaderData();
+  const {
+    quotes,
+    caseOptions,
+    customerOptions,
+    vehicleOptions,
+    defaultTaxRate,
+  } = Route.useLoaderData();
   const { new: presetCaseId } = Route.useSearch();
   const router = useRouter();
 
@@ -75,14 +95,30 @@ function QuotesPage() {
     setFormError(null);
     setPending(true);
     try {
-      const parsed = quoteInputSchema.safeParse(formData);
-      if (!parsed.success) {
-        setFormError(
-          parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
-        );
-        return;
+      if (presetCaseId) {
+        // 案件詳細から来た場合は、その案件に追加する
+        const parsed = quoteInputSchema.safeParse({
+          ...formData,
+          caseId: presetCaseId,
+        });
+        if (!parsed.success) {
+          setFormError(
+            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+          );
+          return;
+        }
+        await createQuote({ data: parsed.data });
+      } else {
+        // この画面から作る場合は、案件も一緒に登録する
+        const parsed = quoteWithNewCaseInputSchema.safeParse(formData);
+        if (!parsed.success) {
+          setFormError(
+            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+          );
+          return;
+        }
+        await createQuoteWithNewCase({ data: parsed.data });
       }
-      await createQuote({ data: parsed.data });
       setModalOpen(false);
       await reload();
     } catch (error) {
@@ -95,11 +131,6 @@ function QuotesPage() {
       setPending(false);
     }
   }
-
-  const caseSelectOptions = caseOptions.map((c) => ({
-    value: c.id,
-    label: `${c.title}（${c.vehicleName}）`,
-  }));
 
   return (
     // 見出しと絞り込みは固定し、一覧の中だけをスクロールさせる
@@ -258,52 +289,167 @@ function QuotesPage() {
         onOpenChange={setModalOpen}
         title="見積・請求を新規作成"
       >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <SelectField
-            name="caseId"
-            label="対象案件"
-            options={caseSelectOptions}
-            defaultValue={presetCaseId ?? caseSelectOptions[0]?.value}
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <SelectField
-              name="docType"
-              label="種別"
-              options={quoteDocTypeValues.map((v) => ({ value: v, label: v }))}
-              defaultValue="見積書"
-            />
-            <TextField
-              name="taxRate"
-              label="明細の既定の消費税率(%)"
-              defaultValue={String(defaultTaxRate)}
-            />
-          </div>
-          <TextField name="title" label="タイトル" />
-          <TextField name="sentOn" label="送付日" type="date" />
-          <TextField
-            name="note"
-            label="通信欄（帳票に印字されます）"
-            multiline
-            rows={3}
-          />
-          <TextField
-            name="internalNote"
-            label="社内メモ（帳票には出ません）"
-            multiline
-            rows={3}
-          />
-
-          {formError ? (
-            <p className="text-sm text-danger" role="alert">
-              {formError}
-            </p>
-          ) : null}
-
-          <button type="submit" className={button()} disabled={pending}>
-            {pending ? "保存中..." : "作成"}
-          </button>
-        </form>
+        <QuoteCreateForm
+          presetCase={caseOptions.find((c) => c.id === presetCaseId)}
+          customerOptions={customerOptions}
+          vehicleOptions={vehicleOptions}
+          defaultTaxRate={defaultTaxRate}
+          pending={pending}
+          formError={formError}
+          onSubmit={handleSubmit}
+        />
       </Modal>
     </AppShell>
+  );
+}
+
+type LoaderData = ReturnType<typeof Route.useLoaderData>;
+type CaseOption = LoaderData["caseOptions"][number];
+type CustomerOption = LoaderData["customerOptions"][number];
+type VehicleOption = LoaderData["vehicleOptions"][number];
+
+/**
+ * 見積・請求の新規作成フォーム。
+ *
+ * この画面から作るときは、案件もここで登録する（顧客 → 車両 を選び、案件名を書く）。
+ * 来店したその場で見積を出す流れでは、案件を先に登録しておくのが二度手間になるため。
+ * 案件詳細の「＋」から来たときは対象がすでに決まっているので、確認用に表示するだけにする。
+ */
+function QuoteCreateForm({
+  presetCase,
+  customerOptions,
+  vehicleOptions,
+  defaultTaxRate,
+  pending,
+  formError,
+  onSubmit,
+}: {
+  presetCase?: CaseOption;
+  customerOptions: CustomerOption[];
+  vehicleOptions: VehicleOption[];
+  defaultTaxRate: number;
+  pending: boolean;
+  formError: string | null;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  const [customerId, setCustomerId] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
+
+  // 車両は選んだ顧客のものだけに絞る（他の顧客の車両に案件を付けてしまわないため）
+  const vehicleChoices = vehicleOptions
+    .filter((v) => v.customerId === customerId)
+    .map((v) => ({ value: v.id, label: vehicleLabel(v) }));
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      {presetCase ? (
+        <>
+          <FixedValue
+            label="対象案件"
+            value={`${presetCase.title}（No.${String(
+              presetCase.caseNumber,
+            ).padStart(6, "0")}）`}
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FixedValue label="顧客" value={presetCase.customerName} />
+            <FixedValue
+              label="車両"
+              value={vehicleLabel({
+                modelName: presetCase.vehicleName,
+                vehicleNumber: presetCase.vehicleNumber,
+              })}
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <SelectField
+            // 車両を絞るためだけの欄。保存するのは案件（とその車両）だけ
+            name="filterCustomerId"
+            label="顧客"
+            options={customerOptions.map((c) => ({
+              value: c.id,
+              label: c.name,
+            }))}
+            placeholder="選択してください"
+            value={customerId}
+            onChange={(next) => {
+              setCustomerId(next);
+              setVehicleId("");
+            }}
+          />
+          <SelectField
+            name="vehicleId"
+            label="対象車両"
+            options={vehicleChoices}
+            placeholder={
+              customerId
+                ? vehicleChoices.length > 0
+                  ? "選択してください"
+                  : "この顧客に車両が登録されていません"
+                : "先に顧客を選んでください"
+            }
+            value={vehicleId}
+            onChange={setVehicleId}
+          />
+          <TextField
+            name="caseTitle"
+            label="案件名（新しい案件として登録されます）"
+            required
+          />
+        </>
+      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <SelectField
+          name="docType"
+          label="種別"
+          options={quoteDocTypeValues.map((v) => ({ value: v, label: v }))}
+          defaultValue="見積書"
+        />
+        <TextField
+          name="taxRate"
+          label="明細の既定の消費税率(%)"
+          defaultValue={String(defaultTaxRate)}
+        />
+      </div>
+      <TextField name="title" label="タイトル" />
+      <TextField name="sentOn" label="送付日" type="date" />
+      <TextField
+        name="note"
+        label="通信欄（帳票に印字されます）"
+        multiline
+        rows={3}
+      />
+      <TextField
+        name="internalNote"
+        label="社内メモ（帳票には出ません）"
+        multiline
+        rows={3}
+      />
+
+      {formError ? (
+        <p className="text-sm text-danger" role="alert">
+          {formError}
+        </p>
+      ) : null}
+
+      <button type="submit" className={button()} disabled={pending}>
+        {pending ? "保存中..." : "作成"}
+      </button>
+    </form>
+  );
+}
+
+/** 変更できない項目。入力欄と同じ体裁で並べて、選んだ相手を確認できるようにする。 */
+function FixedValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-xs font-medium tracking-wide text-ink-muted uppercase">
+        {label}
+      </p>
+      <p className="rounded-md border border-line bg-surface-raised px-3 py-2 text-sm">
+        {value}
+      </p>
+    </div>
   );
 }
