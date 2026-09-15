@@ -24,9 +24,16 @@ import {
   updateQuote,
   updateQuoteItem,
 } from "~/server/quotes";
+import { listWorkItemOptions } from "~/server/work-items";
 
 export const Route = createFileRoute("/quotes_/$id")({
-  loader: ({ params }) => getQuote({ data: { id: params.id } }),
+  loader: async ({ params }) => {
+    const [quote, workItemOptions] = await Promise.all([
+      getQuote({ data: { id: params.id } }),
+      listWorkItemOptions(),
+    ]);
+    return { quote, workItemOptions };
+  },
   component: QuoteDetailPage,
 });
 
@@ -34,7 +41,7 @@ type QuoteDetail = Awaited<ReturnType<typeof getQuote>>;
 type QuoteItemRow = QuoteDetail["items"][number];
 
 function QuoteDetailPage() {
-  const quote = Route.useLoaderData();
+  const { quote, workItemOptions } = Route.useLoaderData();
   const router = useRouter();
 
   const [modal, setModal] = useState<
@@ -511,51 +518,125 @@ function QuoteDetailPage() {
         onOpenChange={(open) => !open && setModal(null)}
         title={modal?.mode === "edit" ? "明細項目を編集" : "明細項目を追加"}
       >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <TextField
-            name="name"
-            label="項目名"
-            required
-            defaultValue={modal?.mode === "edit" ? modal.item.name : ""}
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <TextField
-              name="quantity"
-              label="数量"
-              defaultValue={
-                modal?.mode === "edit" ? String(modal.item.quantity) : "1"
-              }
-            />
-            <TextField
-              name="unitPrice"
-              label="税抜単価"
-              defaultValue={
-                modal?.mode === "edit" ? String(modal.item.unitPrice) : "0"
-              }
-            />
-          </div>
-          {/* 軽減税率の品目が混ざる場合に備え、明細ごとに税率を持たせている */}
-          <TextField
-            name="taxRate"
-            label="消費税率(%)"
-            defaultValue={
-              modal?.mode === "edit"
-                ? String(modal.item.taxRate)
-                : String(quote.taxRate)
-            }
-          />
-
-          {formError ? (
-            <p className="text-sm text-danger" role="alert">
-              {formError}
-            </p>
-          ) : null}
-
-          <button type="submit" className={button()} disabled={pending}>
-            {pending ? "保存中..." : "保存"}
-          </button>
-        </form>
+        <QuoteItemForm
+          item={modal?.mode === "edit" ? modal.item : undefined}
+          workItemOptions={workItemOptions}
+          defaultTaxRate={quote.taxRate}
+          pending={pending}
+          formError={formError}
+          onSubmit={handleSubmit}
+        />
       </Modal>
     </AppShell>
+  );
+}
+
+type LoaderData = ReturnType<typeof Route.useLoaderData>;
+type WorkItemOption = LoaderData["workItemOptions"][number];
+
+/** 明細の「項目名」欄で、リストに無い項目を自由入力するときの選択値 */
+const CUSTOM_WORK_ITEM = "__custom__";
+
+/**
+ * 明細項目の追加・編集フォーム。
+ *
+ * 項目名は作業マスタから選ぶ形にし、表記ゆれと単価・税率の入力の手間を減らす。
+ * マスタに無い項目は「その他（自由入力）」を選んで直接名前を書ける。
+ * 編集時、既存の名前がマスタの項目と一致すればその項目が選ばれた状態で開き、
+ * 一致しなければ「その他」として名前をそのまま自由入力欄に表示する
+ * （マスタ側の名前が変わった・削除された後でも、既存の明細の表示は変わらない）。
+ */
+function QuoteItemForm({
+  item,
+  workItemOptions,
+  defaultTaxRate,
+  pending,
+  formError,
+  onSubmit,
+}: {
+  item?: QuoteItemRow;
+  workItemOptions: WorkItemOption[];
+  defaultTaxRate: number;
+  pending: boolean;
+  formError: string | null;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  const matchedWorkItem = item
+    ? workItemOptions.find((w) => w.name === item.name)
+    : undefined;
+
+  const [workItemId, setWorkItemId] = useState(
+    matchedWorkItem ? matchedWorkItem.id : CUSTOM_WORK_ITEM,
+  );
+  const isCustom = workItemId === CUSTOM_WORK_ITEM;
+  const selectedWorkItem = workItemOptions.find((w) => w.id === workItemId);
+
+  // 数量・単価・税率は入力欄自体は非制御のまま、workItemId を key に含めて
+  // 選び直した時だけ既定値を入れ直す（それ以外では、手で直した値を保ったままにする）。
+  const priceDefault = selectedWorkItem
+    ? String(selectedWorkItem.unitPrice)
+    : String(item?.unitPrice ?? 0);
+  const taxRateDefault = selectedWorkItem
+    ? String(selectedWorkItem.taxRate)
+    : String(item?.taxRate ?? defaultTaxRate);
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <SelectField
+        name="workItemId"
+        label="項目名"
+        options={[
+          ...workItemOptions.map((w) => ({
+            value: w.id,
+            label: `${w.name}（¥${w.unitPrice.toLocaleString()}・${w.taxRate}%）`,
+          })),
+          { value: CUSTOM_WORK_ITEM, label: "その他（自由入力）" },
+        ]}
+        value={workItemId}
+        onChange={setWorkItemId}
+      />
+      {isCustom ? (
+        <TextField
+          key={`name-${workItemId}`}
+          name="name"
+          label="項目名（自由入力）"
+          required
+          defaultValue={!matchedWorkItem ? (item?.name ?? "") : ""}
+        />
+      ) : (
+        // マスタから選んでいる間は、実際に保存する名前をこの隠しフィールドで送る
+        <input type="hidden" name="name" value={selectedWorkItem?.name ?? ""} />
+      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <TextField
+          name="quantity"
+          label="数量"
+          defaultValue={String(item?.quantity ?? 1)}
+        />
+        <TextField
+          key={`unitPrice-${workItemId}`}
+          name="unitPrice"
+          label="税抜単価"
+          defaultValue={priceDefault}
+        />
+      </div>
+      {/* 軽減税率の品目が混ざる場合に備え、明細ごとに税率を持たせている */}
+      <TextField
+        key={`taxRate-${workItemId}`}
+        name="taxRate"
+        label="消費税率(%)"
+        defaultValue={taxRateDefault}
+      />
+
+      {formError ? (
+        <p className="text-sm text-danger" role="alert">
+          {formError}
+        </p>
+      ) : null}
+
+      <button type="submit" className={button()} disabled={pending}>
+        {pending ? "保存中..." : "保存"}
+      </button>
+    </form>
   );
 }

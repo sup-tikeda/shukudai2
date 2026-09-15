@@ -242,6 +242,23 @@ export const quoteItemIdSchema = z.object({
   id: z.uuid(),
 });
 
+/** 作業マスタ（明細のよく使う項目）の管理 */
+export const workItemInputSchema = z.object({
+  name: z.string().trim().min(1, "項目名を入力してください").max(100),
+  unitPrice: z.coerce.number().int().min(0, "0以上の数値を入力してください"),
+  taxRate: z.coerce.number().min(0).max(100),
+});
+
+export type WorkItemInput = z.infer<typeof workItemInputSchema>;
+
+export const workItemUpdateInputSchema = workItemInputSchema.extend({
+  id: z.uuid(),
+});
+
+export const workItemIdSchema = z.object({
+  id: z.uuid(),
+});
+
 /** 店舗設定（会社情報）の管理 */
 export const shopSettingsInputSchema = z.object({
   companyName: optionalText(100),

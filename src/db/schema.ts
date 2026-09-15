@@ -175,6 +175,31 @@ export const quoteItems = pgTable("quote_items", {
 
 export type QuoteItem = typeof quoteItems.$inferSelect;
 
+/**
+ * 作業マスタ。よく使う作業・部品をあらかじめ登録しておき、
+ * 見積・請求の明細を作るときにリストから選べるようにする（表記ゆれと入力の手間を減らすため）。
+ * ここでの単価・税率は「選んだ時に入力欄へ入る既定値」であり、
+ * 実際の明細（quote_items）は選んだ時点の値を独立して持つ
+ * （後からここを直しても、過去の見積・請求は変わらない）。
+ */
+export const workItems = pgTable("work_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  unitPrice: integer("unit_price").notNull().default(0),
+  taxRate: numeric("tax_rate", { precision: 5, scale: 2, mode: "number" })
+    .notNull()
+    .default(10),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date()),
+});
+
+export type WorkItem = typeof workItems.$inferSelect;
+
 /** 店舗設定。会社情報・基本税率など。全体で1レコードのみ。 */
 export const shopSettings = pgTable(
   "shop_settings",

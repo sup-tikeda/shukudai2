@@ -16,6 +16,8 @@ import {
   postalCodeSchema,
   shopSettingsInputSchema,
   staffProfileInputSchema,
+  workItemInputSchema,
+  workItemUpdateInputSchema,
 } from "~/lib/validation";
 import {
   createAccount,
@@ -28,6 +30,12 @@ import {
 import { lookupAddress } from "~/server/postal";
 import { assertAdmin } from "~/server/session";
 import { getShopSettings, updateShopSettings } from "~/server/shopSettings";
+import {
+  createWorkItem,
+  deleteWorkItem,
+  listWorkItems,
+  updateWorkItem,
+} from "~/server/work-items";
 
 export const Route = createFileRoute("/master")({
   // 設定は管理者専用。画面の読み込みが始まる前に、admin以外はここで弾く
@@ -36,6 +44,7 @@ export const Route = createFileRoute("/master")({
   loader: async () => ({
     accounts: await listAccounts(),
     shopSettings: await getShopSettings(),
+    workItems: await listWorkItems(),
   }),
   component: MasterPage,
 });
@@ -56,16 +65,17 @@ function describeAge(birthday: string | null | undefined) {
   return age === null ? null : `${age}歳`;
 }
 
-type Tab = "shopSettings" | "employees";
+type Tab = "shopSettings" | "employees" | "workItems";
 
 // いちばん最初に整える設定なので、会社設定を先頭に置く
 const tabs: { value: Tab; label: string }[] = [
   { value: "shopSettings", label: "会社設定" },
   { value: "employees", label: "社員マスタ" },
+  { value: "workItems", label: "作業マスタ" },
 ];
 
 function MasterPage() {
-  const { accounts, shopSettings } = Route.useLoaderData();
+  const { accounts, shopSettings, workItems } = Route.useLoaderData();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("shopSettings");
 
@@ -77,7 +87,7 @@ function MasterPage() {
     <AppShell>
       <PageHeader
         title="設定"
-        subtitle="見積・請求書に印字する自社情報と、ログインアカウント（＝案件の担当者）を管理します。"
+        subtitle="見積・請求書に印字する自社情報、ログインアカウント（＝案件の担当者）、見積・請求の明細でよく使う項目を管理します。"
       />
 
       <div className="flex flex-col gap-5 sm:flex-row">
@@ -100,8 +110,10 @@ function MasterPage() {
         <div className="min-w-0 flex-1">
           {tab === "shopSettings" ? (
             <ShopSettingsSection settings={shopSettings} onChanged={reload} />
-          ) : (
+          ) : tab === "employees" ? (
             <EmployeeSection accounts={accounts} onChanged={reload} />
+          ) : (
+            <WorkItemSection workItems={workItems} onChanged={reload} />
           )}
         </div>
       </div>
@@ -591,6 +603,215 @@ function EmployeeSection({
               modal?.mode === "edit" ? (modal.account.note ?? "") : ""
             }
           />
+
+          {formError ? (
+            <p className="text-sm text-danger" role="alert">
+              {formError}
+            </p>
+          ) : null}
+
+          <button type="submit" className={button()} disabled={pending}>
+            {pending ? "保存中..." : "保存"}
+          </button>
+        </form>
+      </Modal>
+    </>
+  );
+}
+
+type WorkItem = Awaited<ReturnType<typeof listWorkItems>>[number];
+
+function WorkItemSection({
+  workItems,
+  onChanged,
+}: {
+  workItems: WorkItem[];
+  onChanged: () => Promise<void>;
+}) {
+  const [modal, setModal] = useState<
+    { mode: "create" } | { mode: "edit"; item: WorkItem } | null
+  >(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!modal) return;
+    const formData = Object.fromEntries(new FormData(event.currentTarget));
+
+    setFormError(null);
+    setPending(true);
+    try {
+      if (modal.mode === "create") {
+        const parsed = workItemInputSchema.safeParse(formData);
+        if (!parsed.success) {
+          setFormError(
+            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+          );
+          return;
+        }
+        await createWorkItem({ data: parsed.data });
+      } else {
+        const parsed = workItemUpdateInputSchema.safeParse({
+          ...formData,
+          id: modal.item.id,
+        });
+        if (!parsed.success) {
+          setFormError(
+            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+          );
+          return;
+        }
+        await updateWorkItem({ data: parsed.data });
+      }
+
+      setModal(null);
+      await onChanged();
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "保存に失敗しました。時間をおいて再度お試しください。",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleDelete(item: WorkItem) {
+    if (!window.confirm(`「${item.name}」を削除しますか？`)) {
+      return;
+    }
+    setListError(null);
+    try {
+      await deleteWorkItem({ data: { id: item.id } });
+      await onChanged();
+    } catch {
+      setListError("削除に失敗しました。");
+    }
+  }
+
+  return (
+    <>
+      {listError ? (
+        <p className="mb-4 text-sm text-danger" role="alert">
+          {listError}
+        </p>
+      ) : null}
+
+      <Card
+        title="作業マスタ"
+        count={`${workItems.length} 件`}
+        actions={
+          <button
+            type="button"
+            className={button({ size: "sm" })}
+            onClick={() => {
+              setFormError(null);
+              setModal({ mode: "create" });
+            }}
+          >
+            ＋ 新規作成
+          </button>
+        }
+      >
+        <p className="border-b border-line px-5 py-3 text-xs text-ink-faint">
+          ここに登録した項目は、見積・請求の明細を作るときにリストから選べます。単価・税率は
+          「選んだ時に入力欄へ入る既定値」で、選んだ後は明細ごとに変更できます。ここを直しても
+          過去の見積・請求の金額は変わりません。
+        </p>
+        <DataTable
+          rows={workItems}
+          rowKey={(item) => item.id}
+          emptyMessage="作業マスタが登録されていません。"
+          columns={[
+            {
+              key: "name",
+              header: "項目名",
+              width: "min-w-[12rem]",
+              render: (item: WorkItem) => (
+                <p className="font-medium break-words">{item.name}</p>
+              ),
+            },
+            {
+              key: "unitPrice",
+              header: "既定の単価（税抜）",
+              align: "right",
+              render: (item: WorkItem) => (
+                <span className="whitespace-nowrap tabular-nums">
+                  ¥{item.unitPrice.toLocaleString()}
+                </span>
+              ),
+            },
+            {
+              key: "taxRate",
+              header: "既定の税率",
+              align: "right",
+              render: (item: WorkItem) => (
+                <span className="whitespace-nowrap tabular-nums">
+                  {item.taxRate}%
+                </span>
+              ),
+            },
+            {
+              key: "actions",
+              header: "",
+              align: "right",
+              render: (item: WorkItem) => (
+                <div className="flex justify-end gap-2 whitespace-nowrap">
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => {
+                      setFormError(null);
+                      setModal({ mode: "edit", item });
+                    }}
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => handleDelete(item)}
+                  >
+                    削除
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </Card>
+
+      <Modal
+        open={modal !== null}
+        onOpenChange={(open) => !open && setModal(null)}
+        title={modal?.mode === "edit" ? "作業マスタを編集" : "作業マスタを新規作成"}
+      >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <TextField
+            name="name"
+            label="項目名"
+            required
+            defaultValue={modal?.mode === "edit" ? modal.item.name : ""}
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField
+              name="unitPrice"
+              label="既定の単価（税抜）"
+              defaultValue={
+                modal?.mode === "edit" ? String(modal.item.unitPrice) : "0"
+              }
+            />
+            <TextField
+              name="taxRate"
+              label="既定の税率(%)"
+              defaultValue={
+                modal?.mode === "edit" ? String(modal.item.taxRate) : "10"
+              }
+            />
+          </div>
 
           {formError ? (
             <p className="text-sm text-danger" role="alert">
