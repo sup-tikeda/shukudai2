@@ -159,8 +159,8 @@ export function QuoteDocument({ quote, items, summary, shop }: PrintData) {
         </tbody>
       </table>
 
-      {/* 合計欄 */}
-      <div className="mt-4 flex justify-end">
+      {/* 合計欄。金額のまとまりが改ページで割れないようにする */}
+      <div className="mt-4 flex justify-end break-inside-avoid">
         <table className="w-[80mm] border-collapse text-xs">
           <tbody>
             <tr>
@@ -204,7 +204,7 @@ export function QuoteDocument({ quote, items, summary, shop }: PrintData) {
 
       {/* 振込先は請求書のときだけ。見積書では出さない（元レイアウトと同じ） */}
       {isInvoice && shop?.bankInfo ? (
-        <div className="mt-5 border border-black px-3 py-2 text-xs">
+        <div className="mt-5 border border-black px-3 py-2 text-xs break-inside-avoid">
           <p className="font-bold">振込の場合は下記銀行宛に振込願います。</p>
           <p className="mt-1 whitespace-pre-wrap">{shop.bankInfo}</p>
         </div>
@@ -212,7 +212,7 @@ export function QuoteDocument({ quote, items, summary, shop }: PrintData) {
 
       {/* 通信欄 */}
       {quote.note ? (
-        <div className="mt-5 text-xs">
+        <div className="mt-5 text-xs break-inside-avoid">
           <p className="font-bold">通信欄</p>
           <p className="mt-1 min-h-[18mm] border border-black px-3 py-2 whitespace-pre-wrap">
             {quote.note}

@@ -35,9 +35,12 @@ export function AreaChart({
 }: {
   points: { label: string; value: number }[];
 }) {
-  const width = 600;
-  const height = 210;
-  const padding = { top: 14, right: 10, bottom: 26, left: 46 };
+  // SVGは幅いっぱいまで拡大・縮小されるため、viewBoxの寸法を実際の表示幅
+  // （ダッシュボードでは350〜450px程度）に近づけておく。600のような大きな値にすると、
+  // 文字だけが同じ比率で縮んで軸ラベルが読めなくなる。
+  const width = 380;
+  const height = 140;
+  const padding = { top: 10, right: 8, bottom: 20, left: 38 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
 
@@ -109,7 +112,7 @@ export function AreaChart({
         d={linePath}
         fill="none"
         stroke="var(--color-accent)"
-        strokeWidth="2.5"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -119,10 +122,10 @@ export function AreaChart({
           <circle
             cx={x(index)}
             cy={y(point.value)}
-            r="4"
+            r="3"
             fill="var(--color-surface)"
             stroke="var(--color-accent)"
-            strokeWidth="2.5"
+            strokeWidth="2"
           />
           <text
             x={x(index)}

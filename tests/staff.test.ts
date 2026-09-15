@@ -27,12 +27,22 @@ describe("calculateAge", () => {
 });
 
 describe("isRetired", () => {
-  it("退職日が入っていれば退職済み", () => {
-    expect(isRetired("2026-03-31")).toBe(true);
+  const today = new Date(2026, 8, 14); // 2026-09-14（Dateの月は0始まり）
+
+  it("退職日を過ぎていれば退職済み", () => {
+    expect(isRetired("2026-03-31", today)).toBe(true);
+  });
+
+  it("退職日当日は、まだ在職中（最終出社日にあたるため）", () => {
+    expect(isRetired("2026-09-14", today)).toBe(false);
+  });
+
+  it("退職予定日が未来なら、まだ在職中", () => {
+    expect(isRetired("2026-12-31", today)).toBe(false);
   });
 
   it("空なら在職中", () => {
-    expect(isRetired(null)).toBe(false);
-    expect(isRetired("")).toBe(false);
+    expect(isRetired(null, today)).toBe(false);
+    expect(isRetired("", today)).toBe(false);
   });
 });

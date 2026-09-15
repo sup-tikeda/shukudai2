@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { asc, eq, isNull, sql } from "drizzle-orm";
+import { asc, eq, gte, isNull, or, sql } from "drizzle-orm";
 import { account, user } from "~/db/auth-schema";
 import { staffProfiles } from "~/db/schema";
 import { auth } from "~/lib/auth";
@@ -71,12 +71,19 @@ export const listStaffOptions = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireSession();
 
-    // 退職した社員は選べないようにする（過去の案件に残っている名前はそのまま）
+    // 退職日を過ぎた社員は選べないようにする（過去の案件に残っている名前はそのまま）。
+    // 退職予定日を先に入れておく運用のため、その日までは選べる状態を保つ
+    // （判定の考え方は lib/staff.ts の isRetired と揃えている）。
     return db
       .select({ name: user.name })
       .from(user)
       .leftJoin(staffProfiles, eq(staffProfiles.userId, user.id))
-      .where(isNull(staffProfiles.retiredOn))
+      .where(
+        or(
+          isNull(staffProfiles.retiredOn),
+          gte(staffProfiles.retiredOn, sql`current_date`),
+        ),
+      )
       .orderBy(asc(user.createdAt));
   },
 );

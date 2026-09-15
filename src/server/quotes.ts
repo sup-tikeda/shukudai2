@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { asc, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import {
   cases,
   customers,
@@ -19,6 +20,9 @@ import {
   quoteItemUpdateInputSchema,
   quoteUpdateInputSchema,
 } from "~/lib/validation";
+
+/** 請求書の「元になった見積書」を同じ表から引くための別名（自己結合に必要） */
+const sourceQuotes = alias(quotes, "source_quotes");
 
 /** 見積・請求の一覧（作成日順）。案件名・顧客名・車両名と集計金額をあわせて返す。 */
 export const listQuotes = createServerFn({ method: "GET" }).handler(async () => {
@@ -82,11 +86,15 @@ export const getQuote = createServerFn({ method: "GET" })
         internalNote: quotes.internalNote,
         createdOn: quotes.createdOn,
         sentOn: quotes.sentOn,
+        // 請求書の場合、元になった見積書（削除されていれば null）
+        sourceQuoteId: quotes.sourceQuoteId,
+        sourceDocNumber: sourceQuotes.docNumber,
       })
       .from(quotes)
       .innerJoin(cases, eq(quotes.caseId, cases.id))
       .innerJoin(vehicles, eq(cases.vehicleId, vehicles.id))
       .innerJoin(customers, eq(vehicles.customerId, customers.id))
+      .leftJoin(sourceQuotes, eq(quotes.sourceQuoteId, sourceQuotes.id))
       .where(eq(quotes.id, data.id));
     if (!quote) {
       throw new Error("見積・請求が見つかりません。");
@@ -98,7 +106,19 @@ export const getQuote = createServerFn({ method: "GET" })
       .where(eq(quoteItems.quoteId, data.id))
       .orderBy(asc(quoteItems.createdAt));
 
-    return { ...quote, items, summary: summarizeItems(items) };
+    // 見積書の場合、ここから起こした請求書（同じ見積から複数回作ることもある）
+    const convertedInvoices = await db
+      .select({ id: quotes.id, docNumber: quotes.docNumber })
+      .from(quotes)
+      .where(eq(quotes.sourceQuoteId, data.id))
+      .orderBy(asc(quotes.docNumber));
+
+    return {
+      ...quote,
+      items,
+      summary: summarizeItems(items),
+      convertedInvoices,
+    };
   });
 
 /**
@@ -202,37 +222,43 @@ export const convertQuoteToInvoice = createServerFn({ method: "POST" })
       throw new Error("すでに請求書です。見積書からのみ変換できます。");
     }
 
-    const [created] = await db
-      .insert(quotes)
-      .values({
-        caseId: source.caseId,
-        title: source.title,
-        docType: "請求書",
-        taxRate: source.taxRate,
-        note: source.note,
-        internalNote: source.internalNote,
-      })
-      .returning({ id: quotes.id });
+    // 請求書と明細はひとまとまりで作る。途中で失敗したときに
+    // 明細の無い請求書だけが残ると、金額0円の請求書を送りかねないため。
+    return db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(quotes)
+        .values({
+          caseId: source.caseId,
+          title: source.title,
+          docType: "請求書",
+          taxRate: source.taxRate,
+          note: source.note,
+          internalNote: source.internalNote,
+          // どの見積書から起こしたかを残す（後から金額の根拠をたどれるようにする）
+          sourceQuoteId: source.id,
+        })
+        .returning({ id: quotes.id });
 
-    const items = await db
-      .select()
-      .from(quoteItems)
-      .where(eq(quoteItems.quoteId, source.id))
-      .orderBy(asc(quoteItems.createdAt));
+      const items = await tx
+        .select()
+        .from(quoteItems)
+        .where(eq(quoteItems.quoteId, source.id))
+        .orderBy(asc(quoteItems.createdAt));
 
-    if (items.length > 0) {
-      await db.insert(quoteItems).values(
-        items.map((item) => ({
-          quoteId: created.id,
-          name: item.name,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          taxRate: item.taxRate,
-        })),
-      );
-    }
+      if (items.length > 0) {
+        await tx.insert(quoteItems).values(
+          items.map((item) => ({
+            quoteId: created.id,
+            name: item.name,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            taxRate: item.taxRate,
+          })),
+        );
+      }
 
-    return { id: created.id };
+      return { id: created.id };
+    });
   });
 
 /** 見積・請求を削除する（明細項目も連鎖して削除される） */

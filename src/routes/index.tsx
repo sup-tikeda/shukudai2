@@ -74,7 +74,7 @@ function DashboardPage() {
           value={stats.inspectionAlertCount}
           unit="台"
           tone={stats.inspectionAlertCount > 0 ? "danger" : "default"}
-          sub={`期限まで${60}日以内`}
+          sub={`期限切れ・${stats.inspectionAlertDays}日以内`}
         />
       </div>
 
@@ -87,7 +87,7 @@ function DashboardPage() {
               <div className="flex flex-wrap items-end gap-x-6 gap-y-1">
                 <div>
                   <p className="text-[11px] font-bold text-ink-faint uppercase">
-                    請求金額（税込）
+                    請求金額（税込・全期間）
                   </p>
                   <p className="text-2xl font-black tracking-tight text-accent tabular-nums">
                     ¥{stats.invoiceTotal.toLocaleString()}
@@ -95,7 +95,7 @@ function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-bold text-ink-faint uppercase">
-                    見積金額（税込）
+                    見積金額（税込・全期間）
                   </p>
                   <p className="text-xl font-black tracking-tight tabular-nums">
                     ¥{stats.quoteTotal.toLocaleString()}
@@ -158,8 +158,9 @@ function DashboardPage() {
             ) : (
               <ul>
                 {visibleAlerts.map((alert) => {
-                  const days = remainingDays(alert.inspectionExpiresOn);
-                  const expired = days === 0;
+                  const days = remainingDays(alert.inspectionExpiresOn) ?? 0;
+                  // 当日はまだ切れていないので「本日」。過ぎたものだけ「期限切れ」にする
+                  const expired = days < 0;
                   return (
                     <li
                       key={alert.id}
@@ -171,8 +172,12 @@ function DashboardPage() {
                         className="block px-4 py-2.5 transition-colors hover:bg-surface-raised"
                       >
                         <div className="flex items-center gap-2">
-                          <Badge tone={expired ? "accent" : "neutral"}>
-                            {expired ? "期限切れ" : `あと${days}日`}
+                          <Badge tone={days <= 0 ? "accent" : "neutral"}>
+                            {expired
+                              ? `${-days}日超過`
+                              : days === 0
+                                ? "本日期限"
+                                : `あと${days}日`}
                           </Badge>
                           <p className="min-w-0 flex-1 truncate text-sm font-medium">
                             {alert.modelName}

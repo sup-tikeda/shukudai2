@@ -26,6 +26,9 @@ export const Route = createFileRoute("/lp")({
   component: LandingPage,
 });
 
+/** 創業年（架空の設定）。ヒーローの表記と営業年数の両方がこれを見る */
+const FOUNDED_YEAR = 1998;
+
 /** 取り扱いメニュー。料金は税込の目安 */
 const services = [
   {
@@ -190,7 +193,7 @@ function Hero() {
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1 text-xs font-medium tracking-wide text-accent">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            創業1998年 ／ 整備士在籍4名
+            創業{FOUNDED_YEAR}年 ／ 整備士在籍4名
           </p>
 
           <h1 className="mt-6 text-5xl leading-[1.08] font-black tracking-tight sm:text-7xl">
@@ -268,12 +271,16 @@ function Hero() {
 }
 
 function Stats() {
+  // 営業年数は創業年から計算する。固定の数字を書くと、年が明けるたびに
+  // ヒーローの「創業1998年」と食い違ってしまうため。
+  const years = new Date().getFullYear() - FOUNDED_YEAR;
+
   return (
     // ページ全体が暗いなかで、この帯だけオレンジで塗って区切りにする
     <section className="bg-accent text-accent-ink">
       <div className="mx-auto grid max-w-6xl grid-cols-2 divide-accent-ink/15 sm:grid-cols-4 sm:divide-x">
         {[
-          ["27", "年", "地元で営業"],
+          [String(years), "年", "地元で営業"],
           ["12,000", "台", "累計整備実績"],
           ["4", "名", "国家資格整備士"],
           ["98", "%", "見積もり通りの請求"],

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { button, Modal, SelectField, TextField } from "~/components/ui/form";
 import {
@@ -201,6 +201,38 @@ function QuoteDetailPage() {
               {quote.caseTitle}
             </Link>{" "}
             ／ {quote.vehicleName}
+            {/* 見積書と請求書の対応関係。金額の根拠を後からたどれるようにする */}
+            {quote.sourceQuoteId && quote.sourceDocNumber ? (
+              <>
+                <br />
+                元の見積書：
+                <Link
+                  to="/quotes/$id"
+                  params={{ id: quote.sourceQuoteId }}
+                  className="text-accent underline underline-offset-4"
+                >
+                  No. {String(quote.sourceDocNumber).padStart(6, "0")}
+                </Link>
+              </>
+            ) : null}
+            {quote.convertedInvoices.length > 0 ? (
+              <>
+                <br />
+                この見積から作成した請求書：
+                {quote.convertedInvoices.map((invoice, index) => (
+                  <Fragment key={invoice.id}>
+                    {index > 0 ? "、" : null}
+                    <Link
+                      to="/quotes/$id"
+                      params={{ id: invoice.id }}
+                      className="text-accent underline underline-offset-4"
+                    >
+                      No. {String(invoice.docNumber).padStart(6, "0")}
+                    </Link>
+                  </Fragment>
+                ))}
+              </>
+            ) : null}
           </>
         }
         actions={

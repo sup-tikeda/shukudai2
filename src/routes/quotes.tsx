@@ -14,6 +14,7 @@ import {
 import { quoteDocTypeValues, quoteInputSchema } from "~/lib/validation";
 import { listCaseOptions } from "~/server/cases";
 import { createQuote, listQuotes } from "~/server/quotes";
+import { getDefaultTaxRate } from "~/server/shopSettings";
 
 export const Route = createFileRoute("/quotes")({
   // 案件詳細から «＋ 見積・請求を作成» で来た時、その案件を選んだ状態でフォームを開くため
@@ -23,12 +24,13 @@ export const Route = createFileRoute("/quotes")({
   loader: async () => ({
     quotes: await listQuotes(),
     caseOptions: await listCaseOptions(),
+    defaultTaxRate: await getDefaultTaxRate(),
   }),
   component: QuotesPage,
 });
 
 function QuotesPage() {
-  const { quotes, caseOptions } = Route.useLoaderData();
+  const { quotes, caseOptions, defaultTaxRate } = Route.useLoaderData();
   const { new: presetCaseId } = Route.useSearch();
   const router = useRouter();
 
@@ -273,7 +275,7 @@ function QuotesPage() {
             <TextField
               name="taxRate"
               label="明細の既定の消費税率(%)"
-              defaultValue="10"
+              defaultValue={String(defaultTaxRate)}
             />
           </div>
           <TextField name="title" label="タイトル" />

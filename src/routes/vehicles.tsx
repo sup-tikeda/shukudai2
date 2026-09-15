@@ -6,6 +6,7 @@ import {
   Badge,
   Card,
   DataTable,
+  INSPECTION_WARN_DAYS,
   ListToolbar,
   matchesQuery,
   PageHeader,
@@ -307,9 +308,10 @@ function VehiclesPage() {
                 if (!vehicle.inspectionExpiresOn) {
                   return <span className="text-ink-faint">-</span>;
                 }
-                // 期限が近い車両は色を変えて、案内漏れに気づけるようにする
+                // 期限が近い車両は色を変えて、案内漏れに気づけるようにする。
+                // すでに過ぎているものは間近のものと見分けが付くよう「超過」を添える
                 const days = remainingDays(vehicle.inspectionExpiresOn);
-                const urgent = days !== null && days <= 60;
+                const urgent = days !== null && days <= INSPECTION_WARN_DAYS;
                 return (
                   <span
                     className={`whitespace-nowrap tabular-nums ${
@@ -317,6 +319,9 @@ function VehiclesPage() {
                     }`}
                   >
                     {vehicle.inspectionExpiresOn}
+                    {days !== null && days < 0 ? (
+                      <span className="ml-1 text-[11px]">超過</span>
+                    ) : null}
                   </span>
                 );
               },

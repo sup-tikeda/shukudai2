@@ -81,6 +81,9 @@ export const getDashboardStats = createServerFn({ method: "GET" }).handler(
       vehicles: vehicleCount.value,
       openCases: openCaseCount.value,
       inspectionAlertCount: inspectionAlertCount.value,
+      // 画面の説明文で「何日以内か」を出すため、判定に使った日数もそのまま返す
+      // （画面側に同じ数字を書くと、こちらを変えた時に食い違うため）
+      inspectionAlertDays: INSPECTION_ALERT_DAYS,
       invoiceTotal: Number(invoiceTotalRows[0]?.value ?? 0),
       quoteTotal: Number(quoteTotalRows[0]?.value ?? 0),
     };

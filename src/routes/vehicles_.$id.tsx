@@ -7,8 +7,10 @@ import {
   DataTable,
   DetailItem,
   DetailList,
+  INSPECTION_WARN_DAYS,
   PageHeader,
   RemainingDaysLabel,
+  remainingDays,
   statusTone,
 } from "~/components/ui/layout";
 import { listCases } from "~/server/cases";
@@ -29,6 +31,30 @@ export const Route = createFileRoute("/vehicles_/$id")({
 });
 
 type CaseRow = ReturnType<typeof Route.useLoaderData>["cases"][number];
+
+/**
+ * 車検期限の表示。一覧と同じ基準（60日以内）で色を変え、
+ * 残り日数を添えて「あとどれくらいか」がこの画面だけで分かるようにする。
+ */
+function InspectionExpiry({ expiresOn }: { expiresOn: string }) {
+  const days = remainingDays(expiresOn);
+  if (days === null) return <>{expiresOn}</>;
+  const urgent = days <= INSPECTION_WARN_DAYS;
+  return (
+    <span className={urgent ? "font-bold text-danger" : ""}>
+      {expiresOn}
+      {urgent ? (
+        <span className="ml-1.5 text-[11px] font-normal">
+          {days < 0
+            ? `${-days}日超過`
+            : days === 0
+              ? "本日期限"
+              : `あと${days}日`}
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 function VehicleDetailPage() {
   const { vehicle, cases } = Route.useLoaderData();
@@ -63,7 +89,9 @@ function VehicleDetailPage() {
           <DetailItem label="年式">{vehicle.modelYear ?? ""}</DetailItem>
           <DetailItem label="色">{vehicle.color}</DetailItem>
           <DetailItem label="車検期限">
-            {vehicle.inspectionExpiresOn}
+            {vehicle.inspectionExpiresOn ? (
+              <InspectionExpiry expiresOn={vehicle.inspectionExpiresOn} />
+            ) : null}
           </DetailItem>
           <DetailItem label="登録日">{vehicle.registeredOn}</DetailItem>
           <DetailItem label="保険情報">{vehicle.insuranceInfo}</DetailItem>

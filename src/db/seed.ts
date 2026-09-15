@@ -254,6 +254,8 @@ await db.insert(quoteItems).values([
   { quoteId: quote6.id, name: "エンジンオイル（1L）", quantity: 1, unitPrice: 1500 },
 ]);
 
+// 店舗設定は全体で1レコードのみ（DB側にも制約がある）。
+// 顧客を消してから流し直した時に止まらないよう、既にあれば何もしない。
 await db.insert(shopSettings).values({
   companyName: "バイクショップイケダ",
   postalCode: "170-0001",
@@ -264,7 +266,7 @@ await db.insert(shopSettings).values({
   taxRate: 10,
   invoiceNumber: "T1234567890123",
   bankInfo: "サンプル銀行 本店 普通 1234567",
-});
+}).onConflictDoNothing();
 
 // 社員のダミーデータ。
 //

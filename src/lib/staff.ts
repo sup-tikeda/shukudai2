@@ -29,7 +29,29 @@ export function calculateAge(
   return age < 0 ? null : age;
 }
 
-/** 退職日が入っていれば退職済み。空なら在職中。 */
-export function isRetired(retiredOn: string | null | undefined) {
-  return Boolean(retiredOn);
+/**
+ * 退職日を過ぎていれば退職済み。空欄なら在職中。
+ *
+ * 退職日が入っているかどうかではなく、その日を過ぎたかどうかで判定する。
+ * 退職予定日を先に登録しておく運用があるため、入力した時点で
+ * 担当者に選べなくなってしまうと、退職までの案件を割り当てられなくなる。
+ * 退職日当日は最終出社日にあたるため、まだ在職中として扱う。
+ *
+ * @param retiredOn "YYYY-MM-DD"。未入力なら在職中
+ * @param today 基準日。省略時は実行時の今日
+ */
+export function isRetired(
+  retiredOn: string | null | undefined,
+  today: Date = new Date(),
+) {
+  if (!retiredOn) return false;
+  // どちらも "YYYY-MM-DD" なので、文字列のまま比べれば日付順になる
+  return retiredOn < toIsoDate(today);
+}
+
+function toIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }

@@ -1,3 +1,5 @@
+import { sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   date,
   integer,
@@ -6,6 +8,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -125,6 +128,16 @@ export const quotes = pgTable("quotes", {
   note: text("note"),
   // 社内用のメモ。帳票には出さない（値引きの経緯など、客先に見せない内容を書く）
   internalNote: text("internal_note"),
+  /**
+   * どの見積書から起こした請求書かを残す（見積書自身は null）。
+   *
+   * 元の見積書を削除しても請求書は残す必要があるため、連鎖削除ではなく
+   * null にする。自己参照する列は型を明示しないと型定義が循環する。
+   */
+  sourceQuoteId: uuid("source_quote_id").references(
+    (): AnyPgColumn => quotes.id,
+    { onDelete: "set null" },
+  ),
   createdOn: date("created_on").notNull().defaultNow(),
   sentOn: date("sent_on"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -162,32 +175,41 @@ export const quoteItems = pgTable("quote_items", {
 
 export type QuoteItem = typeof quoteItems.$inferSelect;
 
-/** 店舗設定。会社情報・基本税率など。全体で1レコードのみを想定する。 */
-export const shopSettings = pgTable("shop_settings", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  companyName: varchar("company_name", { length: 100 }),
-  postalCode: varchar("postal_code", { length: 10 }),
-  address: varchar("address", { length: 200 }),
-  building: varchar("building", { length: 100 }),
-  phone: varchar("phone", { length: 30 }),
-  fax: varchar("fax", { length: 30 }),
-  website: varchar("website", { length: 200 }),
-  email: varchar("email", { length: 255 }),
-  // 帳票に印字するロゴ。画像ファイルの保管場所を持たないため、URLで指定する
-  logoUrl: varchar("logo_url", { length: 500 }),
-  taxRate: numeric("tax_rate", { precision: 5, scale: 2, mode: "number" })
-    .notNull()
-    .default(10),
-  invoiceNumber: varchar("invoice_number", { length: 50 }),
-  bankInfo: text("bank_info"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date()),
-});
+/** 店舗設定。会社情報・基本税率など。全体で1レコードのみ。 */
+export const shopSettings = pgTable(
+  "shop_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyName: varchar("company_name", { length: 100 }),
+    postalCode: varchar("postal_code", { length: 10 }),
+    address: varchar("address", { length: 200 }),
+    building: varchar("building", { length: 100 }),
+    phone: varchar("phone", { length: 30 }),
+    fax: varchar("fax", { length: 30 }),
+    website: varchar("website", { length: 200 }),
+    email: varchar("email", { length: 255 }),
+    // 帳票に印字するロゴ。画像ファイルの保管場所を持たないため、URLで指定する
+    logoUrl: varchar("logo_url", { length: 500 }),
+    taxRate: numeric("tax_rate", { precision: 5, scale: 2, mode: "number" })
+      .notNull()
+      .default(10),
+    invoiceNumber: varchar("invoice_number", { length: 50 }),
+    bankInfo: text("bank_info"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
+  },
+  () => [
+    // 全体で1レコードだけにする。常に同じ値（true）に一意制約を張ると、
+    // 2行目のINSERTがDB側で必ず失敗する。アプリ側も「あれば更新」で書いているが、
+    // 初期データの二重投入や同時書き込みはそこをすり抜けるため、DBでも止める。
+    uniqueIndex("shop_settings_single_row").on(sql`((true))`),
+  ],
+);
 
 export type ShopSettings = typeof shopSettings.$inferSelect;
 

@@ -327,32 +327,33 @@ function EmployeeSection({
             },
             {
               key: "hiredOn",
-              header: "入社日",
-              render: (account: Account) => (
-                <span className="whitespace-nowrap tabular-nums">
-                  {account.hiredOn ? (
-                    <>
-                      {account.hiredOn}
-                      {describeAge(account.birthday) ? (
-                        <span className="ml-1 text-ink-faint">
-                          （{describeAge(account.birthday)}）
-                        </span>
-                      ) : null}
-                    </>
-                  ) : (
-                    <span className="text-ink-faint">-</span>
-                  )}
-                </span>
-              ),
+              header: "入社日・年齢",
+              // 年齢は入社日と別の項目なので、入社日が未入力でも単独で出す
+              render: (account: Account) => {
+                const age = describeAge(account.birthday);
+                return (
+                  <span className="whitespace-nowrap tabular-nums">
+                    {account.hiredOn ?? (
+                      <span className="text-ink-faint">-</span>
+                    )}
+                    {age ? (
+                      <span className="ml-1 text-ink-faint">（{age}）</span>
+                    ) : null}
+                  </span>
+                );
+              },
             },
             {
               key: "status",
               header: "状態",
               render: (account: Account) => (
                 <div className="flex flex-wrap gap-1">
-                  {/* 退職者は一覧でもすぐ分かるようにする（担当者には選べなくなるため） */}
+                  {/* 退職者は一覧でもすぐ分かるようにする（担当者には選べなくなるため）。
+                      退職日が未来の場合はまだ在職中なので「退職予定」と区別して出す */}
                   {isRetired(account.retiredOn) ? (
                     <Badge>退職（{account.retiredOn}）</Badge>
+                  ) : account.retiredOn ? (
+                    <Badge tone="accent">退職予定（{account.retiredOn}）</Badge>
                   ) : null}
                   {/* 認証情報が無い社員。名簿には載るが、この画面でパスワードを設定するまでログインできない */}
                   {account.canLogin ? null : <Badge>ログイン不可</Badge>}

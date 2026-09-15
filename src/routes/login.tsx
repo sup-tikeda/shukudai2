@@ -44,7 +44,7 @@ function LoginPage() {
     setPending(false);
     if (error) {
       // 認証失敗の理由は詳細に出さない（アカウント有無の推測を防ぐ）
-      setFormError("メールアドレスまたはパスワードが正しくありません。");
+      setFormError("アカウント名またはパスワードが正しくありません。");
       return;
     }
 

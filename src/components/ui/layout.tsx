@@ -127,9 +127,30 @@ export function AppShell({
             <Link to="/" className="flex items-center gap-2">
               <BrandMark />
             </Link>
+            {/*
+              サイドバーでは「設定」を下端に離して置いているが、狭い画面にはその置き場が
+              無いため、業務メニューの後ろに続けて出す。ここに無いと、admin が
+              スマホ・タブレットから設定へ入れなくなる。
+            */}
             <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
               {menu}
+              {isAdmin ? (
+                <Link
+                  to="/master"
+                  className={navLink({ active: false })}
+                  activeProps={{ className: navLink({ active: true }) }}
+                >
+                  <IconSettings />
+                  設定
+                </Link>
+              ) : null}
             </nav>
+            {/* 名前は幅に余裕がある時だけ。狭い画面ではメニューの表示を優先する */}
+            {sessionUser ? (
+              <span className="hidden shrink-0 text-[11px] whitespace-nowrap text-ink-faint sm:inline">
+                {sessionUser.name}
+              </span>
+            ) : null}
             <button
               type="button"
               onClick={handleSignOut}
@@ -361,7 +382,10 @@ export function Card({
       {fill ? (
         <div className="min-h-0 flex-1 overflow-auto">{children}</div>
       ) : (
-        children
+        // fill でないカード（詳細画面の関連一覧など）も、中身が入りきらない時は
+        // 横にスクロールさせる。カード自体は overflow-hidden（角丸を保つため）なので、
+        // これが無いと表の最小幅（44rem）を下回る画面で右端が見えなくなる。
+        <div className="overflow-x-auto">{children}</div>
       )}
     </section>
   );
@@ -559,35 +583,42 @@ export function ListToolbar({
 }
 
 /**
+ * 車検期限を「近い」と見なす日数。車両一覧と車両詳細で同じ基準を使うためここに置く。
+ * ダッシュボードの集計は同じ考え方の定数をサーバー側（server/dashboard.ts）に持つ。
+ */
+export const INSPECTION_WARN_DAYS = 60;
+
+/**
  * 終了予定日までの残り日数（元FileMakerの「作業：残り日数」に相当）。
- * 過ぎている場合は 0 を返す。日付が未設定なら null。
+ * 当日なら 0、過ぎていれば負の数を返す。日付が未設定なら null。
+ *
+ * 過ぎた分を 0 に丸めてしまうと「今日が期限」と「とっくに過ぎている」を
+ * 区別できず、当日の車両まで期限切れとして扱われてしまうため、負の数のまま返す。
  */
 export function remainingDays(endOn: string | null | undefined) {
   if (!endOn) return null;
   const end = new Date(`${endOn}T00:00:00`);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((end.getTime() - today.getTime()) / 86_400_000);
-  return diff < 0 ? 0 : diff;
+  return Math.ceil((end.getTime() - today.getTime()) / 86_400_000);
 }
 
 /**
- * 終了予定日までの残り日数を添える短い注記。期限切れは赤、3日以内はオレンジで注意を促す。
+ * 終了予定日までの残り日数を添える短い注記。
+ * 当日・超過は赤、3日以内はオレンジで注意を促す。
  * 案件一覧・案件詳細・車両詳細（この車両の案件一覧）で共通して使う。
  */
 export function RemainingDaysLabel({ endOn }: { endOn: string }) {
   const days = remainingDays(endOn);
   if (days === null) return null;
   const tone =
-    days === 0 ? "text-danger" : days <= 3 ? "text-accent" : "text-ink-faint";
-  return (
-    <span className={`ml-2 ${tone}`}>
-      {days === 0 ? "（期限超過）" : `（残り${days}日）`}
-    </span>
-  );
+    days <= 0 ? "text-danger" : days <= 3 ? "text-accent" : "text-ink-faint";
+  const text =
+    days < 0 ? `（${-days}日超過）` : days === 0 ? "（本日期限）" : `（残り${days}日）`;
+  return <span className={`ml-2 ${tone}`}>{text}</span>;
 }
 
-/** 検索語がどれかの項目に含まれるかを判定する（全角・半角と大文字小文字は区別しない） */
+/** 検索語がどれかの項目に含まれるかを判定する（大文字小文字は区別しない） */
 export function matchesQuery(query: string, values: (string | null | undefined)[]) {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;

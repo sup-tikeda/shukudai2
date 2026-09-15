@@ -94,4 +94,17 @@ html {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
+  /*
+   * 明細が2ページ目に入った時の体裁。
+   * 既定でも多くのブラウザは見出し行を繰り返すが、明示しておかないと
+   * 行が上下に割れたり、2ページ目に見出しの無い表だけが残ることがある。
+   */
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
 }
