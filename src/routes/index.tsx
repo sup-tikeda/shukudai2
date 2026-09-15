@@ -13,6 +13,7 @@ import {
   getCaseStatusCounts,
   getDashboardStats,
   getMonthlyRevenue,
+  listFollowUps,
   listInspectionAlerts,
 } from "~/server/dashboard";
 import { getCurrentUser } from "~/server/session";
@@ -21,24 +22,32 @@ export const Route = createFileRoute("/")({
   // 未ログインの場合、getCurrentUser がサーバー側で /login へリダイレクトする。
   // 5つは互いに依存しないので、順番に待たず同時に取得する（表示までの待ち時間を短くするため）
   loader: async () => {
-    const [me, stats, revenue, caseStatus, alerts] = await Promise.all([
-      getCurrentUser(),
-      getDashboardStats(),
-      getMonthlyRevenue(),
-      getCaseStatusCounts(),
-      listInspectionAlerts(),
-    ]);
-    return { me, stats, revenue, caseStatus, alerts };
+    const [me, stats, revenue, caseStatus, alerts, followUps] =
+      await Promise.all([
+        getCurrentUser(),
+        getDashboardStats(),
+        getMonthlyRevenue(),
+        getCaseStatusCounts(),
+        listInspectionAlerts(),
+        listFollowUps(),
+      ]);
+    return { me, stats, revenue, caseStatus, alerts, followUps };
   },
   component: DashboardPage,
 });
 
 function DashboardPage() {
-  const { me, stats, revenue, caseStatus, alerts } = Route.useLoaderData();
+  const { me, stats, revenue, caseStatus, alerts, followUps } =
+    Route.useLoaderData();
 
   // 1画面に収めるため、アラートは先頭3台だけ出して残りは件数で示す
   const visibleAlerts = alerts.slice(0, 3);
   const hiddenAlertCount = alerts.length - visibleAlerts.length;
+
+  const followUpTotal =
+    followUps.staleCases.length +
+    followUps.unconvertedQuotes.length +
+    followUps.unsentQuotes.length;
 
   const totalCases =
     caseStatus.未作業 + caseStatus.作業中 + caseStatus.完了済み;
@@ -201,6 +210,53 @@ function DashboardPage() {
         </div>
       </div>
 
+      {/*
+        担当者がステータス・送付日・請求への変換を手動で管理する運用のため、
+        動きが止まったまま気づかれずに放置されているものを一目で拾えるようにする。
+      */}
+      <div className="mt-3">
+        <Card title="やり忘れチェック" count={`${followUpTotal} 件`}>
+          <div className="grid grid-cols-1 divide-y divide-line md:grid-cols-3 md:divide-x md:divide-y-0">
+            <FollowUpSection
+              title="動きの止まった案件"
+              description={`未作業・作業中のまま${followUps.days}日以上動いていません`}
+              emptyMessage="放置されている案件はありません。"
+              items={followUps.staleCases.map((item) => ({
+                id: item.id,
+                kind: "case" as const,
+                primary: item.title,
+                secondary: `${item.customerName} ／ ${item.vehicleName}`,
+                badge: item.status,
+              }))}
+            />
+            <FollowUpSection
+              title="請求への転換忘れ"
+              description={`見積書のまま${followUps.days}日以上、請求書になっていません`}
+              emptyMessage="転換忘れの見積書はありません。"
+              items={followUps.unconvertedQuotes.map((item) => ({
+                id: item.id,
+                kind: "quote" as const,
+                primary: item.title || item.caseTitle,
+                secondary: `${item.customerName} ／ ${item.vehicleName}`,
+                badge: `No.${item.docNumber}`,
+              }))}
+            />
+            <FollowUpSection
+              title="見積の送付忘れ"
+              description={`見積書を作って${followUps.days}日以上、送付日が未入力です`}
+              emptyMessage="送付忘れの見積書はありません。"
+              items={followUps.unsentQuotes.map((item) => ({
+                id: item.id,
+                kind: "quote" as const,
+                primary: item.title || item.caseTitle,
+                secondary: `${item.customerName} ／ ${item.vehicleName}`,
+                badge: `No.${item.docNumber}`,
+              }))}
+            />
+          </div>
+        </Card>
+      </div>
+
       <div className="mt-3 flex flex-wrap items-center justify-end gap-4 text-xs">
         {/*
           店舗の紹介ページ（お客様向け）。管理画面とは配色も役割も違うため、
@@ -222,5 +278,78 @@ function DashboardPage() {
         </Link>
       </div>
     </AppShell>
+  );
+}
+
+type FollowUpItem = {
+  id: string;
+  kind: "case" | "quote";
+  /** 案件名・見積のタイトルなど、一覧の主表示 */
+  primary: string;
+  /** 顧客名・車両名など、行を特定するための補足 */
+  secondary: string;
+  badge: string;
+};
+
+/**
+ * 「やり忘れチェック」の1区分。車検アラートと同じく、先頭3件だけ出して
+ * 残りは件数でまとめる（1画面に収め、詳細は各詳細画面で確認する前提のため）。
+ */
+function FollowUpSection({
+  title,
+  description,
+  emptyMessage,
+  items,
+}: {
+  title: string;
+  description: string;
+  emptyMessage: string;
+  items: FollowUpItem[];
+}) {
+  const visible = items.slice(0, 3);
+  const hiddenCount = items.length - visible.length;
+
+  return (
+    <div className="px-4 py-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-sm font-bold text-ink">{title}</p>
+        <Badge tone={items.length > 0 ? "accent" : "neutral"}>
+          {items.length} 件
+        </Badge>
+      </div>
+      <p className="mb-2 text-xs text-ink-faint">{description}</p>
+      {items.length === 0 ? (
+        <p className="py-4 text-center text-xs text-ink-faint">
+          {emptyMessage}
+        </p>
+      ) : (
+        <ul>
+          {visible.map((item) => (
+            <li key={item.id} className="border-t border-line first:border-t-0">
+              <Link
+                to={item.kind === "case" ? "/cases/$id" : "/quotes/$id"}
+                params={{ id: item.id }}
+                className="block py-2 transition-colors hover:text-accent"
+              >
+                <div className="flex items-center gap-2">
+                  <Badge tone="neutral">{item.badge}</Badge>
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {item.primary}
+                  </p>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-ink-faint">
+                  {item.secondary}
+                </p>
+              </Link>
+            </li>
+          ))}
+          {hiddenCount > 0 ? (
+            <li className="border-t border-line py-2 text-[11px] text-ink-faint">
+              ほか {hiddenCount} 件
+            </li>
+          ) : null}
+        </ul>
+      )}
+    </div>
   );
 }

@@ -1,5 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, asc, count, eq, isNotNull, lte, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  isNotNull,
+  isNull,
+  lte,
+  sql,
+} from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { cases, customers, quoteItems, quotes, vehicles } from "~/db/schema";
 import { db } from "~/lib/db";
 import {
@@ -10,6 +20,22 @@ import { requireSession } from "~/server/authGuard";
 
 /** 車検期限を「何日先まで」知らせるか。案内を出してから入庫までの準備期間として2か月みておく */
 const INSPECTION_ALERT_DAYS = 60;
+
+/**
+ * 「やり忘れチェック」で何日放置されたら知らせるか。
+ * 案件の滞留・見積の転換忘れ・送付忘れ、すべて同じ日数で揃えている。
+ */
+const FOLLOW_UP_ALERT_DAYS = 30;
+
+/** 案件が最後に更新されてから何日経ったか、の判定基準（タイムスタンプ用） */
+function followUpStaleSince() {
+  return sql`now() - make_interval(days => ${FOLLOW_UP_ALERT_DAYS}::int)`;
+}
+
+/** 見積の発行日から何日経ったか、の判定基準（日付用） */
+function followUpDateLimit() {
+  return sql`current_date - ${FOLLOW_UP_ALERT_DAYS}::int`;
+}
 
 /**
  * 車検期限の判定に使う「今日から何日先まで」を、DB側の現在日付を基準に組み立てる。
@@ -179,5 +205,99 @@ export const listInspectionAlerts = createServerFn({ method: "GET" }).handler(
         ),
       )
       .orderBy(asc(vehicles.inspectionExpiresOn));
+  },
+);
+
+/** 請求書化された見積書かどうかを調べるための自己結合用の別名 */
+const invoicesOf = alias(quotes, "invoices_of");
+
+/**
+ * 「やり忘れチェック」。担当者が案件・見積のステータスを手動で管理する運用のため、
+ * 動きが止まったまま気づかれずに放置されているものを、開いた時点で気づけるようにする。
+ *
+ * - 滞留案件：未作業／作業中のまま、直近{@link FOLLOW_UP_ALERT_DAYS}日以上更新されていない案件
+ * - 見積の転換忘れ：見積書のまま、まだ請求書に変換されていないもの
+ * - 見積の送付忘れ：見積書を作ったのに、送付日が入っていないもの
+ */
+export const listFollowUps = createServerFn({ method: "GET" }).handler(
+  async () => {
+    await requireSession();
+
+    const [staleCases, unconvertedQuotes, unsentQuotes] = await Promise.all([
+      db
+        .select({
+          id: cases.id,
+          caseNumber: cases.caseNumber,
+          title: cases.title,
+          status: cases.status,
+          updatedAt: cases.updatedAt,
+          customerName: customers.name,
+          vehicleName: vehicles.modelName,
+        })
+        .from(cases)
+        .innerJoin(vehicles, eq(cases.vehicleId, vehicles.id))
+        .innerJoin(customers, eq(vehicles.customerId, customers.id))
+        .where(
+          and(
+            sql`${cases.status} <> '完了済み'`,
+            lte(cases.updatedAt, followUpStaleSince()),
+          ),
+        )
+        .orderBy(asc(cases.updatedAt)),
+
+      db
+        .select({
+          id: quotes.id,
+          docNumber: quotes.docNumber,
+          title: quotes.title,
+          createdOn: quotes.createdOn,
+          caseTitle: cases.title,
+          customerName: customers.name,
+          vehicleName: vehicles.modelName,
+        })
+        .from(quotes)
+        .innerJoin(cases, eq(quotes.caseId, cases.id))
+        .innerJoin(vehicles, eq(cases.vehicleId, vehicles.id))
+        .innerJoin(customers, eq(vehicles.customerId, customers.id))
+        .leftJoin(invoicesOf, eq(invoicesOf.sourceQuoteId, quotes.id))
+        .where(
+          and(
+            eq(quotes.docType, "見積書"),
+            isNull(invoicesOf.id),
+            lte(quotes.createdOn, followUpDateLimit()),
+          ),
+        )
+        .orderBy(asc(quotes.createdOn)),
+
+      db
+        .select({
+          id: quotes.id,
+          docNumber: quotes.docNumber,
+          title: quotes.title,
+          createdOn: quotes.createdOn,
+          caseTitle: cases.title,
+          customerName: customers.name,
+          vehicleName: vehicles.modelName,
+        })
+        .from(quotes)
+        .innerJoin(cases, eq(quotes.caseId, cases.id))
+        .innerJoin(vehicles, eq(cases.vehicleId, vehicles.id))
+        .innerJoin(customers, eq(vehicles.customerId, customers.id))
+        .where(
+          and(
+            eq(quotes.docType, "見積書"),
+            isNull(quotes.sentOn),
+            lte(quotes.createdOn, followUpDateLimit()),
+          ),
+        )
+        .orderBy(asc(quotes.createdOn)),
+    ]);
+
+    return {
+      days: FOLLOW_UP_ALERT_DAYS,
+      staleCases,
+      unconvertedQuotes,
+      unsentQuotes,
+    };
   },
 );
