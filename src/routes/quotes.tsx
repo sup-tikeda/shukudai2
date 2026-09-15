@@ -12,20 +12,10 @@ import {
   PageHeader,
   vehicleLabel,
 } from "~/components/ui/layout";
-import {
-  quoteDocTypeValues,
-  quoteInputSchema,
-  quoteWithNewCaseInputSchema,
-} from "~/lib/validation";
+import { quoteDocTypeValues, quoteInputSchema } from "~/lib/validation";
 import { listCaseOptions } from "~/server/cases";
-import { listCustomerOptions } from "~/server/customers";
-import {
-  createQuote,
-  createQuoteWithNewCase,
-  listQuotes,
-} from "~/server/quotes";
+import { createQuote, listQuotes } from "~/server/quotes";
 import { getDefaultTaxRate } from "~/server/shopSettings";
-import { listVehicleOptions } from "~/server/vehicles";
 
 export const Route = createFileRoute("/quotes")({
   // 案件詳細から «＋ 見積・請求を作成» で来た時、その案件を選んだ状態でフォームを開くため
@@ -35,23 +25,17 @@ export const Route = createFileRoute("/quotes")({
   loader: async () => ({
     quotes: await listQuotes(),
     // 案件詳細の「＋」から来た時に、その案件の顧客・車両を表示するために使う
+    // （見積・請求は必ず既存の案件に対して作るため、単独の選択肢一覧としては使わない）
     caseOptions: await listCaseOptions(),
-    customerOptions: await listCustomerOptions(),
-    vehicleOptions: await listVehicleOptions(),
     defaultTaxRate: await getDefaultTaxRate(),
   }),
   component: QuotesPage,
 });
 
 function QuotesPage() {
-  const {
-    quotes,
-    caseOptions,
-    customerOptions,
-    vehicleOptions,
-    defaultTaxRate,
-  } = Route.useLoaderData();
+  const { quotes, caseOptions, defaultTaxRate } = Route.useLoaderData();
   const { new: presetCaseId } = Route.useSearch();
+  const presetCase = caseOptions.find((c) => c.id === presetCaseId);
   const router = useRouter();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -90,35 +74,23 @@ function QuotesPage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!presetCaseId) return;
     const formData = Object.fromEntries(new FormData(event.currentTarget));
 
     setFormError(null);
     setPending(true);
     try {
-      if (presetCaseId) {
-        // 案件詳細から来た場合は、その案件に追加する
-        const parsed = quoteInputSchema.safeParse({
-          ...formData,
-          caseId: presetCaseId,
-        });
-        if (!parsed.success) {
-          setFormError(
-            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
-          );
-          return;
-        }
-        await createQuote({ data: parsed.data });
-      } else {
-        // この画面から作る場合は、案件も一緒に登録する
-        const parsed = quoteWithNewCaseInputSchema.safeParse(formData);
-        if (!parsed.success) {
-          setFormError(
-            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
-          );
-          return;
-        }
-        await createQuoteWithNewCase({ data: parsed.data });
+      const parsed = quoteInputSchema.safeParse({
+        ...formData,
+        caseId: presetCaseId,
+      });
+      if (!parsed.success) {
+        setFormError(
+          parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+        );
+        return;
       }
+      await createQuote({ data: parsed.data });
       setModalOpen(false);
       await reload();
     } catch (error) {
@@ -138,27 +110,13 @@ function QuotesPage() {
       <PageHeader
         eyebrow="Quotes"
         title="見積・請求"
-        subtitle="案件ごとに見積書・請求書を作成し、明細から金額を自動計算します。"
+        subtitle="案件ごとに見積書・請求書を作成し、明細から金額を自動計算します。新規作成は案件の詳細画面から行います。"
         actions={
-          <button
-            type="button"
-            className={button({ size: "sm" })}
-            disabled={caseOptions.length === 0}
-            onClick={() => {
-              setFormError(null);
-              setModalOpen(true);
-            }}
-          >
-            ＋ 新規作成
-          </button>
+          <Link to="/cases" className={button({ variant: "outline", size: "sm" })}>
+            案件一覧へ
+          </Link>
         }
       />
-
-      {caseOptions.length === 0 ? (
-        <p className="mb-4 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
-          先に「案件」を登録してください。見積・請求は案件に紐づけて作成します。
-        </p>
-      ) : null}
 
       <ListToolbar
         query={query}
@@ -290,9 +248,7 @@ function QuotesPage() {
         title="見積・請求を新規作成"
       >
         <QuoteCreateForm
-          presetCase={caseOptions.find((c) => c.id === presetCaseId)}
-          customerOptions={customerOptions}
-          vehicleOptions={vehicleOptions}
+          presetCase={presetCase}
           defaultTaxRate={defaultTaxRate}
           pending={pending}
           formError={formError}
@@ -305,100 +261,53 @@ function QuotesPage() {
 
 type LoaderData = ReturnType<typeof Route.useLoaderData>;
 type CaseOption = LoaderData["caseOptions"][number];
-type CustomerOption = LoaderData["customerOptions"][number];
-type VehicleOption = LoaderData["vehicleOptions"][number];
 
 /**
  * 見積・請求の新規作成フォーム。
  *
- * この画面から作るときは、案件もここで登録する（顧客 → 車両 を選び、案件名を書く）。
- * 来店したその場で見積を出す流れでは、案件を先に登録しておくのが二度手間になるため。
- * 案件詳細の「＋」から来たときは対象がすでに決まっているので、確認用に表示するだけにする。
+ * 見積・請求は必ず既存の案件に対して作る（案件詳細の「＋見積・請求を作成」から
+ * しか開けない）。対象の案件・顧客・車両はここでは選ばせず、確認用に表示するだけにする。
  */
 function QuoteCreateForm({
   presetCase,
-  customerOptions,
-  vehicleOptions,
   defaultTaxRate,
   pending,
   formError,
   onSubmit,
 }: {
   presetCase?: CaseOption;
-  customerOptions: CustomerOption[];
-  vehicleOptions: VehicleOption[];
   defaultTaxRate: number;
   pending: boolean;
   formError: string | null;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }) {
-  const [customerId, setCustomerId] = useState("");
-  const [vehicleId, setVehicleId] = useState("");
-
-  // 車両は選んだ顧客のものだけに絞る（他の顧客の車両に案件を付けてしまわないため）
-  const vehicleChoices = vehicleOptions
-    .filter((v) => v.customerId === customerId)
-    .map((v) => ({ value: v.id, label: vehicleLabel(v) }));
+  if (!presetCase) {
+    // 見積・請求は案件詳細の「＋」からしか作れないため、通常はここに来ない
+    return (
+      <p className="text-sm text-ink-faint">
+        見積・請求は、対象の案件の詳細画面にある「＋見積・請求を作成」から作成してください。
+      </p>
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      {presetCase ? (
-        <>
-          <FixedValue
-            label="対象案件"
-            value={`${presetCase.title}（No.${String(
-              presetCase.caseNumber,
-            ).padStart(6, "0")}）`}
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FixedValue label="顧客" value={presetCase.customerName} />
-            <FixedValue
-              label="車両"
-              value={vehicleLabel({
-                modelName: presetCase.vehicleName,
-                vehicleNumber: presetCase.vehicleNumber,
-              })}
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          <SelectField
-            // 車両を絞るためだけの欄。保存するのは案件（とその車両）だけ
-            name="filterCustomerId"
-            label="顧客"
-            options={customerOptions.map((c) => ({
-              value: c.id,
-              label: c.name,
-            }))}
-            placeholder="選択してください"
-            value={customerId}
-            onChange={(next) => {
-              setCustomerId(next);
-              setVehicleId("");
-            }}
-          />
-          <SelectField
-            name="vehicleId"
-            label="対象車両"
-            options={vehicleChoices}
-            placeholder={
-              customerId
-                ? vehicleChoices.length > 0
-                  ? "選択してください"
-                  : "この顧客に車両が登録されていません"
-                : "先に顧客を選んでください"
-            }
-            value={vehicleId}
-            onChange={setVehicleId}
-          />
-          <TextField
-            name="caseTitle"
-            label="案件名（新しい案件として登録されます）"
-            required
-          />
-        </>
-      )}
+      <FixedValue
+        label="対象案件"
+        value={`${presetCase.title}（No.${String(
+          presetCase.caseNumber,
+        ).padStart(6, "0")}）`}
+      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FixedValue label="顧客" value={presetCase.customerName} />
+        <FixedValue
+          label="車両"
+          value={vehicleLabel({
+            modelName: presetCase.vehicleName,
+            vehicleNumber: presetCase.vehicleNumber,
+          })}
+        />
+      </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SelectField
           name="docType"

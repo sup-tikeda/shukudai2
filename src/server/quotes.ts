@@ -19,7 +19,6 @@ import {
   quoteItemInputSchema,
   quoteItemUpdateInputSchema,
   quoteUpdateInputSchema,
-  quoteWithNewCaseInputSchema,
 } from "~/lib/validation";
 
 /** 請求書の「元になった見積書」を同じ表から引くための別名（自己結合に必要） */
@@ -177,7 +176,12 @@ export const getQuoteForPrint = createServerFn({ method: "GET" })
     };
   });
 
-/** すでにある案件に見積・請求を追加する（案件詳細の「＋」から使う） */
+/**
+ * 見積・請求を新規作成する（明細項目は別途追加する）。
+ * 案件が先に登録されている前提で、その案件に追加する形で作る
+ * （案件詳細の「＋見積・請求を作成」から使う。見積・請求の一覧画面に
+ * 単独の新規作成入口は無く、必ず案件を経由する）。
+ */
 export const createQuote = createServerFn({ method: "POST" })
   .validator(quoteInputSchema)
   .handler(async ({ data }) => {
@@ -188,36 +192,6 @@ export const createQuote = createServerFn({ method: "POST" })
       .values(data)
       .returning({ id: quotes.id });
     return { id: saved.id };
-  });
-
-/**
- * 見積・請求を、対象の案件ごと新しく作る（見積・請求画面の「新規作成」から使う）。
- *
- * 来店したその場で見積を出すときは、案件を先に登録してから見積を作るのが二度手間になる。
- * そのため車両と案件名を受け取り、案件 → 見積・請求の順にまとめて作る。
- * 途中で失敗したときに案件だけが残らないよう、ひとまとまりで書き込む。
- */
-export const createQuoteWithNewCase = createServerFn({ method: "POST" })
-  .validator(quoteWithNewCaseInputSchema)
-  .handler(async ({ data }) => {
-    await requireSession();
-
-    const { vehicleId, caseTitle, ...quoteValues } = data;
-
-    return db.transaction(async (tx) => {
-      // ステータス・担当者は既定のまま作る（案件画面で後から埋められる）
-      const [createdCase] = await tx
-        .insert(cases)
-        .values({ vehicleId, title: caseTitle })
-        .returning({ id: cases.id });
-
-      const [saved] = await tx
-        .insert(quotes)
-        .values({ ...quoteValues, caseId: createdCase.id })
-        .returning({ id: quotes.id });
-
-      return { id: saved.id };
-    });
   });
 
 /** 見積・請求を更新する */
