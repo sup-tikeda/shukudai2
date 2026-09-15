@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
+import { Children, Fragment, isValidElement } from "react";
 import { Link, useLoaderData, useRouter } from "@tanstack/react-router";
 import { tv } from "tailwind-variants";
 import { button } from "~/components/ui/form";
@@ -630,52 +631,97 @@ export function docTypeTone(docType: string): BadgeTone {
   return docType === "請求書" ? "accent" : "info";
 }
 
-/**
- * 詳細画面の項目。値が無いときは「-」を出す。
- *
- * `DataTable`（一覧の表）と見た目を揃え、ラベル｜値の1行の表として描画する
- * （以前はラベルを上・値を下に積む2列グリッドだったが、一覧の表と体裁が
- * 揃っていないと分かりづらいため統一した）。
- *
- * `wide` は以前「2列ぶんの幅を使う」ためのものだったが、1列の表になったので
- * 意味を持たない。呼び出し側（顧客・車両・案件の各詳細画面）を変えずに済むよう、
- * 受け取りはするが何もしない。
- */
-export function DetailItem({
-  label,
-  children,
-}: {
+type DetailItemProps = {
   label: string;
   children?: ReactNode;
+  /** 長文の項目（住所・備考など）。単独で1行を使い、値の列を目一杯使う。 */
   wide?: boolean;
-}) {
-  return (
-    // 余白・文字サイズは DataTable の行（px-3 py-2 / text-[13px]）と揃え、
-    // 高さも一覧の表と同じ密度になるようにしている。
-    <tr className="border-b border-line last:border-b-0">
-      <th
-        scope="row"
-        className="w-32 shrink-0 border-r border-line bg-surface-raised px-3 py-2 text-left align-top text-[11px] font-bold tracking-wide whitespace-nowrap text-ink-faint"
-      >
-        {label}
-      </th>
-      <td className="px-3 py-2 align-top text-[13px] break-words whitespace-pre-wrap">
-        {children || <span className="text-ink-faint">-</span>}
-      </td>
-    </tr>
-  );
+};
+
+/**
+ * 詳細画面の項目。実際の描画は行わず、`DetailList` が子要素として受け取って
+ * まとめて表に組み立てる（表全体の行の組み方を`DetailList`側で決めるため）。
+ *
+ * 短い項目（電話番号など）は無理に1行1項目にせず、`DetailList`が2つずつ
+ * 横に並べる。1項目だけを常に1行いっぱいに広げると、値が短いときに
+ * 右側へ大きな空白ができてしまうため。
+ */
+export function DetailItem(_props: DetailItemProps) {
+  return null;
 }
 
+/**
+ * `DetailItem`を受け取り、ラベル｜値の表（`DataTable`と同じ体裁）に組み立てる。
+ *
+ * - 通常の項目は**2つずつ横に並べて1行**にする（ラベル｜値｜ラベル｜値）。
+ *   項目数が多くても縦に間延びしないようにするため。
+ * - `wide`の項目（住所・備考など長文になりうるもの）は単独で1行にし、
+ *   値の列を残り全部（3列ぶん）まで広げる。
+ */
 export function DetailList({ children }: { children: ReactNode }) {
+  const items = Children.toArray(children).filter(
+    (child): child is ReactElement<DetailItemProps> =>
+      isValidElement(child) && child.type === DetailItem,
+  );
+
+  // 通常の項目は2つずつの組に、wideの項目は単独の組にまとめる
+  const rows: ReactElement<DetailItemProps>[][] = [];
+  let pending: ReactElement<DetailItemProps>[] = [];
+  for (const item of items) {
+    if (item.props.wide) {
+      if (pending.length > 0) rows.push(pending);
+      pending = [];
+      rows.push([item]);
+    } else {
+      pending.push(item);
+      if (pending.length === 2) {
+        rows.push(pending);
+        pending = [];
+      }
+    }
+  }
+  if (pending.length > 0) rows.push(pending);
+
   return (
-    // w-full や min-w は付けない。どちらも「値」の列に余った幅を押し付け、
-    // 短い値（電話番号など）の右側にだけ大きな空白ができる原因になるため。
+    // 表に w-full は付けない。付けると値の列に余った幅が押し付けられ、
+    // 短い値（電話番号など）の右側にだけ大きな空白ができてしまうため。
     // 幅を指定しない表は中身の長さに合わせて縮む（HTMLの既定の挙動）ので、
-    // 中身が短ければ表そのものも小さくなる。長い住所などが来た時のために
-    // max-w-3xl で上限だけ決めておく。
+    // 値が短ければ表そのものも小さくなる。長い住所などが来た時のために
+    // max-w-4xl だけ上限として残す（2つ組の分、単独項目より広めにしている）。
     <div className="overflow-x-auto px-5 py-5">
-      <table className="max-w-3xl border-collapse border border-line">
-        <tbody>{children}</tbody>
+      <table className="max-w-4xl border-collapse border border-line">
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="border-b border-line last:border-b-0">
+              {row.map((item, itemIndex) => {
+                const isLastInRow = itemIndex === row.length - 1;
+                return (
+                  <Fragment key={item.props.label}>
+                    <th
+                      scope="row"
+                      className="w-28 shrink-0 border-r border-line bg-surface-raised px-3 py-2 text-left align-top text-[11px] font-bold tracking-wide whitespace-nowrap text-ink-faint"
+                    >
+                      {item.props.label}
+                    </th>
+                    <td
+                      // 単独の組（wide、または2つに満たなかった残り1件）は、
+                      // 空いた右側の列も含めて値の列いっぱいに広げる
+                      colSpan={row.length === 1 ? 3 : undefined}
+                      className={[
+                        "px-3 py-2 align-top text-[13px] break-words whitespace-pre-wrap",
+                        isLastInRow ? "" : "border-r border-line",
+                      ].join(" ")}
+                    >
+                      {item.props.children || (
+                        <span className="text-ink-faint">-</span>
+                      )}
+                    </td>
+                  </Fragment>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   );
