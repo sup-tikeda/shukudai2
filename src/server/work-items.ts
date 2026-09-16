@@ -13,7 +13,7 @@ import {
 export const listWorkItems = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireAdminSession();
-    return db.select().from(workItems).orderBy(asc(workItems.name));
+    return db.select().from(workItems).orderBy(asc(workItems.code));
   },
 );
 
@@ -28,13 +28,14 @@ export const listWorkItemOptions = createServerFn({ method: "GET" }).handler(
     return db
       .select({
         id: workItems.id,
+        code: workItems.code,
         name: workItems.name,
         unitPrice: workItems.unitPrice,
         taxRate: workItems.taxRate,
         itemType: workItems.itemType,
       })
       .from(workItems)
-      .orderBy(asc(workItems.name));
+      .orderBy(asc(workItems.code));
   },
 );
 

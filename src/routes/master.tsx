@@ -744,6 +744,15 @@ function WorkItemSection({
           emptyMessage="作業マスタが登録されていません。"
           columns={[
             {
+              key: "code",
+              header: "管理番号",
+              render: (item: WorkItem) => (
+                <span className="whitespace-nowrap tabular-nums text-ink-muted">
+                  {item.code}
+                </span>
+              ),
+            },
+            {
               key: "name",
               header: "項目名",
               width: "min-w-[12rem]",
@@ -818,6 +827,16 @@ function WorkItemSection({
         title={modal?.mode === "edit" ? "作業マスタを編集" : "作業マスタを新規作成"}
       >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <TextField
+            name="code"
+            label="管理番号"
+            required
+            defaultValue={modal?.mode === "edit" ? modal.item.code : ""}
+          />
+          <p className="text-xs text-ink-faint">
+            3桁の数字で入力します。一覧はこの番号順に並びます（100番台=点検・整備、
+            200番台=部品、900番台=割引・査定）。
+          </p>
           <TextField
             name="name"
             label="項目名"

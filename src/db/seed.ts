@@ -257,23 +257,29 @@ await db.insert(quoteItems).values([
 
 // 作業マスタ：上の明細でよく出てくる項目をあらかじめ登録しておく
 // （同じ内容が複数の明細に出てくるものは、代表して1件にまとめてある）。
+// 管理番号は一覧の並び順も兼ねる。100番台=点検・整備の工賃、200番台=部品、
+// 900番台=割引・査定（金額が0か、マイナス計算になるもの）。
 await db.insert(workItems).values([
-  { name: "エンジンオイル交換工賃", unitPrice: 3000 },
-  { name: "エンジンオイル（1L）", unitPrice: 1500 },
-  { name: "エンジンオイル（4L）", unitPrice: 4000 },
-  { name: "点検基本料", unitPrice: 2000 },
-  { name: "タイヤ（前輪）", unitPrice: 12000 },
-  { name: "タイヤ（後輪）", unitPrice: 15000 },
-  { name: "タイヤ交換工賃", unitPrice: 2000 },
-  { name: "バッテリー本体", unitPrice: 8000 },
-  { name: "交換工賃", unitPrice: 1500 },
-  { name: "車検基本料", unitPrice: 20000 },
-  { name: "自賠責保険料", unitPrice: 9000, taxRate: 0 },
-  { name: "重量税", unitPrice: 5000, taxRate: 0 },
-  { name: "ブレーキパッド交換", unitPrice: 3000 },
-  { name: "マフラー本体", unitPrice: 45000 },
-  { name: "取付工賃", unitPrice: 8000 },
-  { name: "常連様割引", unitPrice: 1000, itemType: "割引" },
+  { code: "101", name: "点検基本料", unitPrice: 2000 },
+  { code: "102", name: "車検基本料", unitPrice: 20000 },
+  { code: "103", name: "エンジンオイル交換工賃", unitPrice: 3000 },
+  { code: "104", name: "タイヤ交換工賃", unitPrice: 2000 },
+  { code: "105", name: "ブレーキパッド交換", unitPrice: 3000 },
+  { code: "106", name: "取付工賃", unitPrice: 8000 },
+  { code: "107", name: "交換工賃", unitPrice: 1500 },
+  // LPの「レッカー・引き取り ¥5,500〜（税込）」に対応する
+  { code: "108", name: "引き取り・レッカー料", unitPrice: 5000 },
+  { code: "201", name: "エンジンオイル（1L）", unitPrice: 1500 },
+  { code: "202", name: "エンジンオイル（4L）", unitPrice: 4000 },
+  { code: "203", name: "タイヤ（前輪）", unitPrice: 12000 },
+  { code: "204", name: "タイヤ（後輪）", unitPrice: 15000 },
+  { code: "205", name: "バッテリー本体", unitPrice: 8000 },
+  { code: "206", name: "マフラー本体", unitPrice: 45000 },
+  { code: "207", name: "自賠責保険料", unitPrice: 9000, taxRate: 0 },
+  { code: "208", name: "重量税", unitPrice: 5000, taxRate: 0 },
+  // LPの「販売・買取 査定無料」に対応する。無料なので単価は0
+  { code: "901", name: "車両査定", unitPrice: 0 },
+  { code: "902", name: "常連様割引", unitPrice: 1000, itemType: "割引" },
 ]);
 
 // 店舗設定は全体で1レコードのみ（DB側にも制約がある）。

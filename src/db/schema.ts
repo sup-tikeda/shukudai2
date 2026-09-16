@@ -184,6 +184,9 @@ export type QuoteItem = typeof quoteItems.$inferSelect;
  */
 export const workItems = pgTable("work_items", {
   id: uuid("id").primaryKey().defaultRandom(),
+  // 管理番号。一覧の並び順もこれで決める（100番台=点検・整備、200番台=部品、
+  // 900番台=割引・査定）。名前順に並べると種別が入り混じって探しにくいため。
+  code: varchar("code", { length: 20 }).notNull().unique(),
   name: varchar("name", { length: 100 }).notNull(),
   unitPrice: integer("unit_price").notNull().default(0),
   taxRate: numeric("tax_rate", { precision: 5, scale: 2, mode: "number" })
