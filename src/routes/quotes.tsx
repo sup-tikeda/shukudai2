@@ -151,13 +151,6 @@ function QuotesPage() {
           }
           columns={[
             {
-              key: "docType",
-              header: "種別",
-              render: (q) => (
-                <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
-              ),
-            },
-            {
               key: "docNumber",
               header: "管理番号",
               render: (q) => (
@@ -172,10 +165,11 @@ function QuotesPage() {
               // タイトルは短いこともあるので余白は吸わせず、下限だけ決める
               width: "min-w-[10rem]",
               render: (q) => (
-                <p className="font-medium break-words">
+                <p className="flex flex-wrap items-center gap-2 font-medium break-words">
                   {q.title || (
                     <span className="text-ink-faint">（タイトル未設定）</span>
                   )}
+                  <Badge tone={docTypeTone(q.docType)}>{q.docType}</Badge>
                 </p>
               ),
             },

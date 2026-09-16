@@ -206,8 +206,8 @@ function QuoteDetailPage() {
       <PageHeader
         title={
           <span className="flex flex-wrap items-center gap-3">
-            {quote.title || "（タイトル未設定）"}
             <Badge tone={docTypeTone(quote.docType)}>{quote.docType}</Badge>
+            {quote.title || "（タイトル未設定）"}
           </span>
         }
         backTo="/quotes"
