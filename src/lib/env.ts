@@ -18,6 +18,9 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional().default(""),
   MAIL_FROM: z.string().min(1),
   CONTACT_NOTIFY_TO: z.email(),
+  // 社内チャット（社内規定の質問応答）用。未設定でもアプリ自体は動くよう必須にはしない。
+  // 使う機能側で「未設定ならエラーメッセージを返す」形にする。
+  GEMINI_API_KEY: z.string().optional().default(""),
 });
 
 export const env = envSchema.parse(process.env);

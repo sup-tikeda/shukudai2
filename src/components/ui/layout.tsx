@@ -15,6 +15,7 @@ const navLinks = [
   { to: "/vehicles", label: "車両", icon: IconVehicle },
   { to: "/cases", label: "案件", icon: IconCase },
   { to: "/quotes", label: "見積・請求", icon: IconQuote },
+  { to: "/chat", label: "社内チャット", icon: IconChat },
 ] as const;
 
 const navLink = tv({
@@ -267,6 +268,15 @@ function IconQuote() {
       <path d="M5 2.5h7l3 3v12H5z" />
       <path d="M11.5 2.5v3.5H15" />
       <path d="M7.5 10.5h5M7.5 13.5h3" />
+    </svg>
+  );
+}
+
+/** 社内チャット。吹き出しで表している */
+function IconChat() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M3 5.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3.5v-3.5H5a2 2 0 0 1-2-2z" />
     </svg>
   );
 }

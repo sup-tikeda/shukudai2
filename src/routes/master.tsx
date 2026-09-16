@@ -15,6 +15,8 @@ import {
   accountUpdateInputSchema,
   postalCodeSchema,
   shopSettingsInputSchema,
+  companyDocumentInputSchema,
+  companyDocumentUpdateInputSchema,
   staffProfileInputSchema,
   workItemInputSchema,
   workItemTypeValues,
@@ -32,6 +34,12 @@ import { lookupAddress } from "~/server/postal";
 import { assertAdmin } from "~/server/session";
 import { getShopSettings, updateShopSettings } from "~/server/shopSettings";
 import {
+  createCompanyDocument,
+  deleteCompanyDocument,
+  listCompanyDocuments,
+  updateCompanyDocument,
+} from "~/server/company-documents";
+import {
   createWorkItem,
   deleteWorkItem,
   listWorkItems,
@@ -46,6 +54,7 @@ export const Route = createFileRoute("/master")({
     accounts: await listAccounts(),
     shopSettings: await getShopSettings(),
     workItems: await listWorkItems(),
+    companyDocuments: await listCompanyDocuments(),
   }),
   component: MasterPage,
 });
@@ -66,17 +75,19 @@ function describeAge(birthday: string | null | undefined) {
   return age === null ? null : `${age}歳`;
 }
 
-type Tab = "shopSettings" | "employees" | "workItems";
+type Tab = "shopSettings" | "employees" | "workItems" | "companyDocuments";
 
 // いちばん最初に整える設定なので、会社設定を先頭に置く
 const tabs: { value: Tab; label: string }[] = [
   { value: "shopSettings", label: "会社設定" },
   { value: "employees", label: "社員マスタ" },
   { value: "workItems", label: "作業マスタ" },
+  { value: "companyDocuments", label: "社内規定" },
 ];
 
 function MasterPage() {
-  const { accounts, shopSettings, workItems } = Route.useLoaderData();
+  const { accounts, shopSettings, workItems, companyDocuments } =
+    Route.useLoaderData();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("shopSettings");
 
@@ -113,8 +124,13 @@ function MasterPage() {
             <ShopSettingsSection settings={shopSettings} onChanged={reload} />
           ) : tab === "employees" ? (
             <EmployeeSection accounts={accounts} onChanged={reload} />
-          ) : (
+          ) : tab === "workItems" ? (
             <WorkItemSection workItems={workItems} onChanged={reload} />
+          ) : (
+            <CompanyDocumentSection
+              documents={companyDocuments}
+              onChanged={reload}
+            />
           )}
         </div>
       </div>
@@ -989,5 +1005,225 @@ function ShopSettingsSection({
         </button>
       </form>
     </Card>
+  );
+}
+
+type CompanyDocument = Awaited<ReturnType<typeof listCompanyDocuments>>[number];
+
+/** 登録日・更新日の表示用（日付のみ、時刻は出さない） */
+function formatDate(value: string | Date) {
+  return new Date(value).toLocaleDateString("ja-JP");
+}
+
+/**
+ * 社内規定文書の管理。ここに登録した文書だけを根拠に、社内チャットが質問に答える
+ * （ファイルは扱わず、コピー＆ペーストしたテキストで持つ）。
+ */
+function CompanyDocumentSection({
+  documents,
+  onChanged,
+}: {
+  documents: CompanyDocument[];
+  onChanged: () => Promise<void>;
+}) {
+  const [modal, setModal] = useState<
+    | { mode: "create" }
+    | { mode: "edit"; document: CompanyDocument }
+    | null
+  >(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!modal) return;
+    const formData = Object.fromEntries(new FormData(event.currentTarget));
+
+    setFormError(null);
+    setPending(true);
+    try {
+      if (modal.mode === "create") {
+        const parsed = companyDocumentInputSchema.safeParse(formData);
+        if (!parsed.success) {
+          setFormError(
+            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+          );
+          return;
+        }
+        await createCompanyDocument({ data: parsed.data });
+      } else {
+        const parsed = companyDocumentUpdateInputSchema.safeParse({
+          ...formData,
+          id: modal.document.id,
+        });
+        if (!parsed.success) {
+          setFormError(
+            parsed.error.issues[0]?.message ?? "入力内容を確認してください。",
+          );
+          return;
+        }
+        await updateCompanyDocument({ data: parsed.data });
+      }
+
+      setModal(null);
+      await onChanged();
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "保存に失敗しました。時間をおいて再度お試しください。",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleDelete(document: CompanyDocument) {
+    if (!window.confirm(`「${document.title}」を削除しますか？`)) {
+      return;
+    }
+    setListError(null);
+    try {
+      await deleteCompanyDocument({ data: { id: document.id } });
+      await onChanged();
+    } catch {
+      setListError("削除に失敗しました。");
+    }
+  }
+
+  return (
+    <>
+      {listError ? (
+        <p className="mb-4 text-sm text-danger" role="alert">
+          {listError}
+        </p>
+      ) : null}
+
+      <Card
+        title="社内規定"
+        count={`${documents.length} 件`}
+        actions={
+          <button
+            type="button"
+            className={button({ size: "sm" })}
+            onClick={() => {
+              setFormError(null);
+              setModal({ mode: "create" });
+            }}
+          >
+            ＋ 新規作成
+          </button>
+        }
+      >
+        <p className="border-b border-line px-5 py-3 text-xs text-ink-faint">
+          ここに登録した文書の内容だけを根拠に、社内チャットが質問に答えます。
+          就業規則・給与規定など、社員が調べたい内容をコピー＆ペーストして登録してください。
+        </p>
+        <DataTable
+          rows={documents}
+          rowKey={(document) => document.id}
+          emptyMessage="社内規定が登録されていません。"
+          columns={[
+            {
+              key: "title",
+              header: "タイトル",
+              width: "min-w-[10rem]",
+              render: (document: CompanyDocument) => (
+                <p className="font-medium break-words">{document.title}</p>
+              ),
+            },
+            {
+              key: "content",
+              header: "本文（先頭のみ）",
+              render: (document: CompanyDocument) => (
+                <p className="line-clamp-2 max-w-md text-xs text-ink-faint break-words">
+                  {document.content}
+                </p>
+              ),
+            },
+            {
+              key: "createdAt",
+              header: "登録日",
+              render: (document: CompanyDocument) => (
+                <span className="whitespace-nowrap text-ink-faint tabular-nums">
+                  {formatDate(document.createdAt)}
+                </span>
+              ),
+            },
+            {
+              key: "updatedAt",
+              header: "更新日",
+              render: (document: CompanyDocument) => (
+                <span className="whitespace-nowrap text-ink-faint tabular-nums">
+                  {formatDate(document.updatedAt)}
+                </span>
+              ),
+            },
+            {
+              key: "actions",
+              header: "",
+              align: "right",
+              render: (document: CompanyDocument) => (
+                <div className="flex justify-end gap-2 whitespace-nowrap">
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => {
+                      setFormError(null);
+                      setModal({ mode: "edit", document });
+                    }}
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    className={button({ variant: "ghost", size: "sm" })}
+                    onClick={() => handleDelete(document)}
+                  >
+                    削除
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </Card>
+
+      <Modal
+        open={modal !== null}
+        onOpenChange={(open) => !open && setModal(null)}
+        title={modal?.mode === "edit" ? "社内規定を編集" : "社内規定を新規作成"}
+      >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <TextField
+            name="title"
+            label="タイトル"
+            required
+            defaultValue={modal?.mode === "edit" ? modal.document.title : ""}
+          />
+          <TextField
+            name="content"
+            label="本文"
+            required
+            multiline
+            rows={10}
+            defaultValue={
+              modal?.mode === "edit" ? modal.document.content : ""
+            }
+          />
+
+          {formError ? (
+            <p className="text-sm text-danger" role="alert">
+              {formError}
+            </p>
+          ) : null}
+
+          <button type="submit" className={button()} disabled={pending}>
+            {pending ? "保存中..." : "保存"}
+          </button>
+        </form>
+      </Modal>
+    </>
   );
 }

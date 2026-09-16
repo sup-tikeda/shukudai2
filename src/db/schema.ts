@@ -203,6 +203,26 @@ export const workItems = pgTable("work_items", {
 
 export type WorkItem = typeof workItems.$inferSelect;
 
+/**
+ * 社内規定など、社内チャットが参照する文書。テキストで保存する（容量を抑えるため、
+ * ファイルそのものは扱わずコピー＆ペーストしたテキストのみを持つ）。
+ * 編集はadmin限定。質問応答（社内チャット）はログインしていれば誰でも使える。
+ */
+export const companyDocuments = pgTable("company_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: varchar("title", { length: 100 }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date()),
+});
+
+export type CompanyDocument = typeof companyDocuments.$inferSelect;
+
 /** 店舗設定。会社情報・基本税率など。全体で1レコードのみ。 */
 export const shopSettings = pgTable(
   "shop_settings",

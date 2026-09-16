@@ -269,6 +269,28 @@ export const workItemIdSchema = z.object({
   id: z.uuid(),
 });
 
+/** 社内チャットが参照する社内規定文書の管理（admin限定） */
+export const companyDocumentInputSchema = z.object({
+  title: z.string().trim().min(1, "タイトルを入力してください").max(100),
+  content: z.string().trim().min(1, "本文を入力してください").max(20000),
+});
+
+export type CompanyDocumentInput = z.infer<typeof companyDocumentInputSchema>;
+
+export const companyDocumentUpdateInputSchema =
+  companyDocumentInputSchema.extend({
+    id: z.uuid(),
+  });
+
+export const companyDocumentIdSchema = z.object({
+  id: z.uuid(),
+});
+
+/** 社内チャットへの質問 */
+export const chatQuestionInputSchema = z.object({
+  question: z.string().trim().min(1, "質問を入力してください").max(1000),
+});
+
 /** 店舗設定（会社情報）の管理 */
 export const shopSettingsInputSchema = z.object({
   companyName: optionalText(100),
