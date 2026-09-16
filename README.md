@@ -346,10 +346,26 @@ wrangler tail     # 本番の実行ログ（--format json で例外のスタッ�
 | 種別 | 変数 |
 | --- | --- |
 | vars（公開） | `BETTER_AUTH_URL` / `BASIC_AUTH_USER` / `SMTP_*` / `MAIL_FROM` / `CONTACT_NOTIFY_TO` |
-| secret（非公開） | `BETTER_AUTH_SECRET` / `BASIC_AUTH_PASSWORD` / `DATABASE_URL` |
+| secret（非公開） | `BETTER_AUTH_SECRET` / `BASIC_AUTH_PASSWORD` / `DATABASE_URL` / `GEMINI_API_KEY` |
 
 ローカル開発用のシークレットは `.dev.vars`（gitignore済み）に置く。ローカルの Hyperdrive は
 環境変数 `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` で接続先を指定する。
+
+#### 社内チャット（`GEMINI_API_KEY`）
+
+未登録でもアプリは動くが、社内チャットの画面で「社内チャットは未設定です」と表示される。
+使う場合は Google AI Studio（aistudio.google.com）でキーを発行し、次のコマンドで登録する。
+
+```bash
+pnpm exec wrangler secret put GEMINI_API_KEY   # 実行後に値の入力を求められる
+```
+
+キーは利用者ごとではなく**店舗で1つ**を管理者が登録する。社内規定は全員が同じものを読むため
+個人差が無く、人数分の秘密を預かる必要も、個人の Google アカウントに費用を負わせる理由も無い。
+
+登録すると Worker の新しいバージョンが自動で配信されるため、`pnpm cf:deploy` は要らない。
+ローカルでも使う場合は `.dev.vars` に `GEMINI_API_KEY=<値>` を追記する
+（`wrangler secret` で登録した値はローカルには反映されない）。
 
 ### この構成での制約
 
@@ -461,6 +477,7 @@ Docker の secrets、CI/CD のシークレット機能など）で渡します�
 | `MAIL_DOMAIN` | docker-mailserver のドメイン名（社内限定のため実在ドメインでなくてよい） |
 | `MAIL_SMTP_PORT` | docker-mailserver のホスト側公開ポート（既定 2525。ホストから送信テストする場合に使う） |
 | `TUNNEL_PUBLIC_URL` | Cloudflare Tunnel（`cloudflared`サービス）で外部公開する際の公開URL。設定すると`BETTER_AUTH_URL`をこの値で上書きする |
+| `GEMINI_API_KEY` | 社内チャット（社内規定の質問応答）用。Google AI Studio で発行する。未設定でもアプリは動くが、社内チャットだけ使えない。利用者ごとではなく店舗で1つを管理者が持つ |
 
 値は `src/lib/env.ts` の zod スキーマで検証されます。未設定・不正な形式ならその場で失敗するため、
 本番で設定漏れに気づかないまま動き続けることはありません。
