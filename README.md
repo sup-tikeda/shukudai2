@@ -334,9 +334,32 @@ Railway（従量課金）からの移行先として作成した。公開URL：h
 ```bash
 pnpm dev          # ローカル開発（workerd上で動く）
 pnpm build        # ビルド
-pnpm deploy       # ビルドしてCloudflareへデプロイ
+pnpm cf:deploy    # ビルドしてCloudflareへデプロイ（手動で反映したいとき）
 wrangler tail     # 本番の実行ログ（--format json で例外のスタックまで見える）
 ```
+
+### GitHubからの自動デプロイ（Workers Builds）
+
+`master` へ push すると Cloudflare 側でビルドとデプロイが走る。設定は管理画面の
+Workers & Pages → shukudai2 → 設定 → ビルド から行う（リポジトリには設定ファイルを置かない）。
+
+| 項目 | 値 |
+| --- | --- |
+| ビルドコマンド | `pnpm run build` |
+| デプロイコマンド | `pnpm exec wrangler deploy -c dist/server/wrangler.json` |
+| ルートディレクトリ | `/` |
+
+デプロイコマンドは既定値の `npx wrangler deploy` から必ず変える。理由は2つ。
+
+- **`npx` が使えない**。`package.json` の `devEngines` が pnpm を必須にしているため、
+  npm 経由で起動すると `EBADDEVENGINES` で落ちる。`pnpm exec` を使う。
+- **設定ファイルの指定が要る**。ビルドすると `dist/server/wrangler.json` が生成され、
+  デプロイはそちらを使う。省略するとルートの `wrangler.jsonc`（ビルド前のソースを指している）が
+  読まれて失敗する。
+
+**`src/db/schema.ts` を変えたときだけ、push の前に手元で `pnpm db:migrate` を実行する。**
+マイグレーションは自動では流れないため、順序が逆になると新しいコードが古いテーブルを触る。
+画面や処理だけの変更なら、push するだけでよい。
 
 ### 環境変数・シークレット
 
