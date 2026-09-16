@@ -14,7 +14,7 @@ export const submitInquiry = createServerFn({ method: "POST" })
       text: [
         `お名前: ${data.name}`,
         `メールアドレス: ${data.email}`,
-        `件名: ${data.subject}`,
+        `ご相談内容: ${data.subject}`,
         "",
         data.message,
       ].join("\n"),

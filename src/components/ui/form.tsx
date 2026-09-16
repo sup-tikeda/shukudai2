@@ -112,6 +112,8 @@ type SelectFieldProps = {
   options: { value: string; label: string }[];
   defaultValue?: string;
   required?: boolean;
+  invalid?: boolean;
+  error?: string;
   /**
    * 未選択の状態から選ばせたい時に、先頭へ置く空の項目（「選択してください」など）。
    * 指定しないと最初の選択肢が既定で選ばれた状態になるため、
@@ -132,6 +134,8 @@ export function SelectField({
   options,
   defaultValue,
   required,
+  invalid,
+  error,
   placeholder,
   value,
   onChange,
@@ -143,7 +147,11 @@ export function SelectField({
       : { defaultValue };
 
   return (
-    <Field.Root required={required} className="flex flex-col gap-1.5">
+    <Field.Root
+      required={required}
+      invalid={invalid}
+      className="flex flex-col gap-1.5"
+    >
       <Field.Label className={label()}>
         {labelText}
         <Field.RequiredIndicator className="ml-1 text-accent" />
@@ -156,6 +164,9 @@ export function SelectField({
           </option>
         ))}
       </select>
+      {error ? (
+        <Field.ErrorText className={errorText()}>{error}</Field.ErrorText>
+      ) : null}
     </Field.Root>
   );
 }

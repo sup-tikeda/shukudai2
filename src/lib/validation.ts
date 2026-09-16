@@ -2,10 +2,26 @@ import { z } from "zod";
 
 // クライアント・サーバー双方から参照するため、シークレットを含む env は import しない。
 
+/**
+ * お問い合わせの相談内容。店舗紹介ページ（LP）に載せているサービスと対応させている。
+ *
+ * 自由入力にすると表記がばらつき、通知メールの件名で振り分けられなくなるため、
+ * 選択肢を固定している。ここが通知メールの件名にそのまま入る。
+ */
+export const inquiryTopicValues = [
+  "車検・点検",
+  "修理・不具合の相談",
+  "カスタム・パーツ取り付け",
+  "タイヤ・オイル交換",
+  "車両の購入・買取",
+  "レッカー・引き取り",
+  "その他",
+] as const;
+
 export const inquiryInputSchema = z.object({
   name: z.string().trim().min(1, "お名前を入力してください").max(100),
   email: z.email("メールアドレスの形式が正しくありません").max(255),
-  subject: z.string().trim().min(1, "件名を入力してください").max(200),
+  subject: z.enum(inquiryTopicValues, "ご相談内容を選択してください"),
   message: z.string().trim().min(1, "本文を入力してください").max(5000),
 });
 
@@ -251,6 +267,11 @@ export const quoteItemIdSchema = z.object({
 export const workItemTypeValues = ["通常", "割引"] as const;
 
 export const workItemInputSchema = z.object({
+  // 一覧の並び順も兼ねる。100番台=点検・整備、200番台=部品、900番台=割引・査定
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{3}$/, "管理番号は3桁の数字で入力してください"),
   name: z.string().trim().min(1, "項目名を入力してください").max(100),
   // 割引項目でもここは「割引額」として0以上で入力する。マイナス計算への変換は
   // 明細に取り込むタイミング（種別が「割引」かどうか）で行う。
