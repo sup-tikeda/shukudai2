@@ -184,12 +184,12 @@ function CustomersPage() {
       <ListToolbar
         query={query}
         onQueryChange={setQuery}
-        placeholder="顧客番号・顧客名・電話番号・住所で絞り込み"
+        placeholder="管理番号・顧客名・電話番号・住所で絞り込み"
         sortKey={sortKey}
         onSortChange={setSortKey}
         sortOptions={[
           { value: "name", label: "名前順" },
-          { value: "number", label: "顧客番号順" },
+          { value: "number", label: "管理番号順" },
           { value: "newest", label: "登録が新しい順" },
         ]}
       />
@@ -215,7 +215,7 @@ function CustomersPage() {
           columns={[
             {
               key: "customerNumber",
-              header: "番号",
+              header: "管理番号",
               render: (customer) => (
                 <span className="whitespace-nowrap text-ink-faint tabular-nums">
                   {String(customer.customerNumber).padStart(6, "0")}

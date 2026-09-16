@@ -121,13 +121,13 @@ function QuotesPage() {
       <ListToolbar
         query={query}
         onQueryChange={setQuery}
-        placeholder="タイトル・顧客・車両・案件・番号で絞り込み"
+        placeholder="タイトル・顧客・車両・案件・管理番号で絞り込み"
         sortKey={sortKey}
         onSortChange={setSortKey}
         sortOptions={[
           { value: "newest", label: "作成日が新しい順" },
           { value: "amount", label: "金額が大きい順" },
-          { value: "number", label: "書類番号順" },
+          { value: "number", label: "管理番号順" },
         ]}
       />
 
@@ -159,7 +159,7 @@ function QuotesPage() {
             },
             {
               key: "docNumber",
-              header: "番号",
+              header: "管理番号",
               render: (q) => (
                 <span className="whitespace-nowrap text-ink-faint tabular-nums">
                   {String(q.docNumber).padStart(6, "0")}

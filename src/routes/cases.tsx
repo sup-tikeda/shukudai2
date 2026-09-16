@@ -237,11 +237,11 @@ function CasesPage() {
       <ListToolbar
         query={query}
         onQueryChange={setQuery}
-        placeholder="案件番号・案件名・担当者・車両・顧客で絞り込み"
+        placeholder="管理番号・案件名・担当者・車両・顧客で絞り込み"
         sortKey={sortKey}
         onSortChange={setSortKey}
         sortOptions={[
-          { value: "number", label: "案件番号順" },
+          { value: "number", label: "管理番号順" },
           { value: "start", label: "開始予定日順" },
           { value: "end", label: "終了予定日が近い順" },
           { value: "status", label: "ステータス順" },
@@ -269,7 +269,7 @@ function CasesPage() {
           columns={[
             {
               key: "caseNumber",
-              header: "番号",
+              header: "管理番号",
               render: (c) => (
                 <span className="whitespace-nowrap text-ink-faint tabular-nums">
                   {String(c.caseNumber).padStart(6, "0")}
