@@ -270,12 +270,6 @@ function DashboardPage() {
         >
           店舗紹介ページ（別ウィンドウ）
         </Link>
-        <Link
-          to="/contact"
-          className="text-ink-faint underline underline-offset-4 transition-colors hover:text-accent"
-        >
-          問い合わせフォーム
-        </Link>
       </div>
     </AppShell>
   );
