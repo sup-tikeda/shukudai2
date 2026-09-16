@@ -7,6 +7,13 @@
   "compatibility_flags": ["nodejs_compat"],
   // Basic認証を挟むため、既定の "@tanstack/react-start/server-entry" ではなく自前のエントリを使う
   "main": "src/server.ts",
+  // 画像やJS・CSSも Worker を通す。既定では静的ファイルが Worker より手前で配信され、
+  // src/server.ts の Basic認証を通らずに誰でも取得できてしまうため。
+  // Worker を先に通す分、配信は ASSETS バインディング経由で src/server.ts が自分で行う。
+  "assets": {
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
   "observability": {
     "enabled": true
   },
