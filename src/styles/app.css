@@ -6,7 +6,7 @@
  *
  * 既定は管理画面向けの明るいテーマ。長時間の入力作業で見やすいよう、
  * 白地に薄いグレーの罫線を基本とし、オレンジは主操作だけに使う。
- * 店舗紹介ページ（LP）だけは後述の .theme-dark で暗い配色に切り替えている。
+ * 店舗紹介ページ（LP）だけは後述の .theme-lp で別の配色に切り替えている。
  */
 @theme {
   /* 背景（奥 → 手前）。白いカードが浮いて見えるよう、地の色は少し沈ませている */
@@ -14,6 +14,8 @@
   --color-surface: oklch(1 0 0);
   --color-surface-raised: oklch(0.965 0.005 250);
   --color-line: oklch(0.885 0.007 250);
+  /* 罫線より一段はっきりした境界（枠線で見せるボタン・囲みに使う） */
+  --color-line-strong: oklch(0.82 0.008 250);
 
   /* 文字（濃い → 薄い）。見出しとの差を出すため、本文は思い切って濃くしている */
   --color-ink: oklch(0.21 0.014 260);
@@ -29,33 +31,61 @@
   --color-danger: oklch(0.53 0.19 25);
   --color-success: oklch(0.5 0.13 155);
   --color-info: oklch(0.5 0.14 245);
+
+  /* 店舗紹介ページ（LP）の書体。design-spec.yml の typography.family に合わせている */
+  --font-lp: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 /**
- * 暗い配色に切り替えるための上書き。
- * 変数を再定義するだけなので、画面側のクラス（bg-surface など）は書き換え不要。
- * 現在は店舗紹介ページ（LP）でのみ使っている。
+ * 店舗紹介ページ（LP）の配色。design-spec.yml の design_tokens.colors をそのまま写し、
+ * 役割名の変数に割り当てている（変数を再定義するだけなので bg-surface などの
+ * クラスは書き換え不要）。
+ *
+ * spec の 4 色は「背景の濃さ」ではなく「区画の塗り分け」として使われるため、
+ * shell=ink（地）、surface=pine（緑の区画）、surface-raised=espresso（茶の区画）と対応させた。
+ * アクセント色は持たず、白（white）の面と枠線でコントラストを作る。
  */
-.theme-dark {
-  --color-shell: oklch(0.16 0.006 260);
-  --color-surface: oklch(0.21 0.008 260);
-  --color-surface-raised: oklch(0.25 0.009 260);
-  --color-line: oklch(0.31 0.01 260);
+.theme-lp {
+  --color-shell: #1b201f;
+  --color-surface: #173f38;
+  --color-surface-raised: #342500;
+  --color-line: rgba(247, 245, 240, 0.58);
+  --color-line-strong: rgba(247, 245, 240, 0.82);
 
-  --color-ink: oklch(0.96 0.003 260);
-  --color-ink-muted: oklch(0.72 0.012 260);
-  --color-ink-faint: oklch(0.58 0.012 260);
+  --color-ink: #f7f5f0;
+  --color-ink-muted: rgba(247, 245, 240, 0.78);
+  --color-ink-faint: rgba(247, 245, 240, 0.56);
 
-  --color-accent: oklch(0.72 0.17 55);
-  --color-accent-strong: oklch(0.66 0.18 50);
-  --color-accent-ink: oklch(0.18 0.02 60);
+  /* 反転して塗るパーツ（ボタンのホバー時など）は白地に地の色を載せる */
+  --color-accent: #f7f5f0;
+  --color-accent-strong: #ffffff;
+  --color-accent-ink: #1b201f;
 
-  --color-danger: oklch(0.7 0.17 25);
-  --color-success: oklch(0.75 0.14 155);
-  --color-info: oklch(0.75 0.12 245);
+  /*
+   * 状態を表す色は既定テーマのままだと暗く、この地の上では読めない。
+   * 入力欄のエラー表示（お問い合わせフォーム）で使うため、明るく取り直す。
+   */
+  --color-danger: oklch(0.72 0.17 25);
+  --color-success: oklch(0.78 0.14 155);
+  --color-info: oklch(0.78 0.12 245);
 
-  /* 暗い背景ではフォーム部品も暗く描画させる（カレンダーのアイコン等） */
   color-scheme: dark;
+}
+
+/* 枠線だけのボタンやリンクでも、キーボード操作時の位置が分かるようにする */
+.theme-lp :focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+/* 動きを減らす設定の利用者には、装飾目的のアニメーションを止める */
+@media (prefers-reduced-motion: reduce) {
+  .theme-lp *,
+  .theme-lp *::before,
+  .theme-lp *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /* 選択範囲もアクセント色に合わせる */

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 /**
@@ -6,11 +5,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
  *
  * 店舗管理アプリ本体とは役割が違う（来店前のお客様に見せる集客用ページ）ため、
  * AppShell（社内向けナビ）は使わず、このファイル内で完結させている。
- * 配色だけは管理画面と同じダーク＋オレンジのテーマ変数を使い、世界観をそろえている。
+ *
+ * 見た目は design-spec.yml（雑誌的な全面写真＋細い書体の版面）に合わせている。
+ * spec は home / pricing / services の3ページ構成だが、このページは1枚に統合し、
+ * 各ページのセクションを縦に並べている。
  *
  * 掲載している店名・住所・電話番号・料金・お客様の声はすべて架空のダミーで、
- * 実在の店舗や個人とは関係がない。写真素材を持たないため、画像は使わず
- * 図形とタイポグラフィだけで見栄えを作っている。
+ * 実在の店舗や個人とは関係がない。写真はまだ用意できていないため、spec が写真を置く位置には
+ * CSSで作った代替の面を同じ大きさで置いている（差し替え方は後述の PHOTOS を参照）。
  */
 export const Route = createFileRoute("/lp")({
   head: () => ({
@@ -26,55 +28,165 @@ export const Route = createFileRoute("/lp")({
   component: LandingPage,
 });
 
-/** 創業年（架空の設定）。ヒーローの表記と営業年数の両方がこれを見る */
+/** 創業年（架空の設定）。実績の表記と営業年数の両方がこれを見る */
 const FOUNDED_YEAR = 1998;
 
-/** 取り扱いメニュー。料金は税込の目安 */
+/**
+ * design-spec.yml の typography をクラス文字列にしたもの。
+ * spec は見出しも weight 400 と細く、字間を詰めることで大きさを出している。
+ * 760px 未満はモバイル指定のサイズに落とす。
+ */
+const TYPE = {
+  display:
+    "text-[48px] leading-[1.0] font-normal tracking-[-0.04em] min-[760px]:text-[78px] min-[760px]:leading-[0.98] min-[760px]:tracking-[-0.045em]",
+  h1: "text-[40px] leading-[1.04] font-normal tracking-[-0.035em] min-[760px]:text-[50px] min-[760px]:leading-[1.02]",
+  h2: "text-[34px] leading-[1.08] font-normal tracking-[-0.035em] min-[760px]:text-[48px] min-[760px]:leading-[1.06]",
+  h3: "text-[22px] leading-[1.2] font-bold",
+  body: "text-[17px] leading-[1.3] font-normal min-[760px]:text-[20px] min-[760px]:leading-[1.22]",
+};
+
+/** 枠線だけの丸ボタン（spec の outline_cta）。Link と a の両方に付けるためクラスで持つ */
+/*
+ * spec の width は 310px だが、日本語の label は字幅が広く折り返してしまう。
+ * 310px は最小幅として使い、文字数に応じて横に伸ばす。
+ */
+const OUTLINE_CTA =
+  "inline-flex h-[58px] min-w-[310px] items-center justify-center rounded-full border border-line-strong bg-transparent px-11 text-[17px] leading-none font-normal tracking-[0.12em] whitespace-nowrap transition-colors duration-[220ms] ease-out hover:bg-accent hover:text-accent-ink min-[760px]:text-[20px]";
+
+/** 左右2分割の版面（spec の split_media）。760px 未満では縦積みになり、文章が先に来る */
+const SPLIT_MEDIA =
+  "mx-auto grid w-full max-w-[1440px] min-[760px]:min-h-[684px] min-[760px]:grid-cols-[41.5%_58.5%]";
+
+/** ページ左右の余白（spec の page_gutter: モバイル20px / それ以上28px） */
+const GUTTER = "px-5 min-[760px]:px-7";
+
+/**
+ * 写真の差し替え表。ここだけを書き換えれば全ての枠が入れ替わる。
+ *
+ * 画像ファイルは public/lp/ に置き、src にはそこからのURL（例 "/lp/hero.jpg"）を書く。
+ * src が空のあいだは、代わりに CSS で作った面（MediaSlot）を同じ大きさで表示する。
+ *
+ * position は design-spec.yml の treatment.position に対応する。写真は object-fit: cover で
+ * 切り抜かれるため、残したい部分（被写体の顔や車体）が切れる場合にここをずらす。
+ */
+const PHOTOS = {
+  hero: {
+    src: "/lp/hero.jpg",
+    alt: "工場の床に立つ整備士の足元と工具カート",
+    position: "center 58%",
+  },
+  about: {
+    src: "/lp/about.jpg",
+    alt: "工具棚の前で工具を手に取る整備士",
+    position: "center",
+  },
+  reasonEstimate: {
+    src: "/lp/reason-estimate.jpg",
+    alt: "壁一面の工具棚から工具を選ぶ整備士",
+    position: "center",
+  },
+  reasonSpeed: {
+    src: "/lp/reason-speed.jpg",
+    alt: "ホイールを外して作業する整備士",
+    position: "center",
+  },
+  reasonRange: {
+    src: "/lp/reason-range.jpg",
+    alt: "作業台で溶接する整備士",
+    position: "center",
+  },
+  shop: {
+    src: "/lp/shop.jpg",
+    alt: "工具箱の前でスパナを受け渡す整備士",
+    position: "center",
+  },
+};
+
+type Photo = { src: string; alt: string; position: string };
+
+/**
+ * 取り扱いメニュー。料金はすべて税込の目安。
+ *
+ * 金額は作業マスタ（src/db/seed.ts の work_items）の単価を税込に直した値で、
+ * 対応する管理番号をコメントに添えている。マスタ側を変えたらここも直すこと。
+ * 金額のつかない「査定無料」は、数字のある項目のあとに置いている。
+ */
 const services = [
   {
-    no: "01",
     title: "車検・点検",
-    body: "指定工場としての設備で、分解整備から書類手続きまで一括で対応します。代車は無料でご用意。",
-    price: "¥29,800〜",
+    price: "¥22,000〜", // 102 車検基本料 20,000（税抜）
+    includes: "分解整備・書類手続き・代車（無料）",
+    body: "指定工場としての設備で、分解整備から書類手続きまで一括で対応します。",
   },
   {
-    no: "02",
     title: "一般修理",
-    body: "エンジン不調、電装トラブル、転倒後の修復まで。原因を特定してから、お見積もりをお出しします。",
-    price: "¥3,300〜",
+    price: "¥2,200〜", // 101 点検基本料 2,000（税抜）
+    includes: "点検・原因の特定・見積もり",
+    body: "エンジン不調、電装トラブル、転倒後の修復まで承ります。",
   },
   {
-    no: "03",
     title: "カスタム",
-    body: "マフラー・サスペンション・外装の交換から、ワンオフ製作のご相談まで承ります。",
-    price: "¥8,800〜",
+    price: "¥8,800〜", // 106 取付工賃 8,000（税抜）
+    includes: "部品選定・取り付け・調整",
+    body: "マフラー・サスペンション・外装の交換から、ワンオフ製作のご相談まで。",
   },
   {
-    no: "04",
     title: "タイヤ・オイル交換",
-    body: "在庫のあるサイズなら当日交換が可能です。廃油・廃タイヤの処分もこちらで行います。",
-    price: "¥2,200〜",
+    price: "¥2,200〜", // 104 タイヤ交換工賃 2,000（税抜）
+    includes: "交換作業・廃油／廃タイヤ処分",
+    body: "在庫のあるサイズなら当日交換が可能です。",
   },
   {
-    no: "05",
-    title: "販売・買取",
-    body: "国産・輸入車問わず、整備済みの中古車をご用意。乗り換えの際の買取も相談できます。",
-    price: "査定無料",
-  },
-  {
-    no: "06",
     title: "レッカー・引き取り",
-    body: "動かなくなってしまった車両も、店舗から30km圏内なら引き取りにうかがいます。",
-    price: "¥5,500〜",
+    price: "¥5,500〜", // 108 引き取り・レッカー料 5,000（税抜）
+    includes: "30km圏内の引き取り",
+    body: "動かなくなってしまった車両も、ご自宅までうかがいます。",
+  },
+  {
+    title: "販売・買取",
+    price: "査定無料", // 901 車両査定 0円
+    includes: "車両査定・名義変更手続き",
+    body: "国産・輸入車問わず、整備済みの中古車をご用意しています。",
+  },
+];
+
+/** 他店との違い（spec の differentiators に対応する3枚） */
+const differentiators = [
+  {
+    title: "見積もりがそのまま請求になる",
+    body: "点検で原因を特定してから金額をお出しします。ご承諾いただいた作業以外は行わず、追加が必要なときは必ず事前にご連絡します。",
+    photo: PHOTOS.reasonEstimate,
+  },
+  {
+    title: "待たせない、止めない",
+    body: "在庫のあるタイヤ・オイルは当日交換。お預かりが長くなる場合は、代車を無料でお貸しします。",
+    photo: PHOTOS.reasonSpeed,
+  },
+  {
+    title: "他店で断られた一台こそ",
+    body: "国産・輸入・旧車まで対応します。部品が出ない車両も、探すところからお付き合いします。",
+    photo: PHOTOS.reasonRange,
   },
 ];
 
 /** ご依頼から納車までの流れ */
 const steps = [
-  { title: "ご相談", body: "お電話・フォーム・ご来店のいずれでも。症状を伺います。" },
-  { title: "点検・見積もり", body: "車両をお預かりし、原因を特定してお見積もりをお出しします。" },
-  { title: "整備", body: "ご承諾いただいた内容だけを作業します。追加は必ず事前にご連絡。" },
-  { title: "納車", body: "作業内容と交換部品をご説明したうえでお引き渡しします。" },
+  {
+    title: "ご相談",
+    body: "お電話・フォーム・ご来店のいずれでも。症状を伺います。",
+  },
+  {
+    title: "点検・見積もり",
+    body: "車両をお預かりし、原因を特定してお見積もりをお出しします。",
+  },
+  {
+    title: "整備",
+    body: "ご承諾いただいた内容だけを作業します。追加は必ず事前にご連絡。",
+  },
+  {
+    title: "納車",
+    body: "作業内容と交換部品をご説明したうえでお引き渡しします。",
+  },
 ];
 
 /** お客様の声（架空） */
@@ -93,206 +205,217 @@ const voices = [
   },
 ];
 
+/** 店舗情報（架空） */
+const shopInfo = [
+  ["店名", "バイクショップイケダ"],
+  ["所在地", "東京都豊島区西巣鴨1-1（架空の住所です）"],
+  ["電話", "03-0000-0000"],
+  ["営業時間", "9:00 - 19:00"],
+  ["定休日", "毎週水曜日・第2木曜日"],
+  ["駐車場", "店舗前に3台（バイクは10台まで）"],
+];
+
+const NAV = [
+  { href: "#about", label: "私たちについて" },
+  { href: "#services", label: "サービスと料金" },
+  { href: "#flow", label: "ご依頼の流れ" },
+  { href: "#access", label: "店舗情報" },
+];
+
 function LandingPage() {
   return (
-    // 管理画面は明るい配色だが、このページだけは theme-dark で暗い配色に切り替える
-    <div className="theme-dark min-h-screen bg-shell text-ink">
-      <SiteHeader />
+    // 管理画面は明るい配色だが、このページだけは theme-lp で spec の配色に切り替える
+    <div className="theme-lp min-h-screen overflow-x-hidden bg-shell font-lp text-ink">
       <main>
         <Hero />
-        <Stats />
+        <Record />
+        <About />
+        <Differentiators />
         <Services />
         <Flow />
         <Voices />
         <Access />
-        <ClosingCta />
       </main>
       <SiteFooter />
     </div>
   );
 }
 
-function SiteHeader() {
+/**
+ * 写真の枠。PHOTOS に src があればその画像を、無ければ CSS で作った代替の面を出す。
+ * どちらの場合も同じ位置・同じ大きさを占めるので、写真を用意しても版面は変わらない。
+ *
+ * eager は最初の画面に写る写真（ヒーロー）に付ける。ここを遅延読み込みにすると
+ * 表示が一拍遅れて、ページが重く見えてしまうため。
+ */
+function MediaSlot({
+  photo,
+  eager = false,
+  className = "",
+}: {
+  photo: Photo;
+  eager?: boolean;
+  className?: string;
+}) {
+  if (photo.src) {
+    return (
+      <img
+        src={photo.src}
+        alt={photo.alt}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+        style={{ objectPosition: photo.position }}
+        className={`h-full w-full object-cover ${className}`}
+      />
+    );
+  }
+
   return (
-    <header className="sticky top-0 z-20 border-b border-line/70 bg-shell/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
-        <Link to="/lp" className="flex items-center gap-2.5">
-          <Logo />
-          <span className="leading-tight">
-            <span className="block text-sm font-bold tracking-wider">
-              バイクショップイケダ
-            </span>
-            <span className="block text-[10px] tracking-[0.25em] text-ink-faint uppercase">
-              Ikeda Motorcycles
-            </span>
-          </span>
-        </Link>
-
-        <nav className="ml-auto hidden items-center gap-1 md:flex">
-          {[
-            { href: "#services", label: "サービス" },
-            { href: "#flow", label: "ご依頼の流れ" },
-            { href: "#voices", label: "お客様の声" },
-            { href: "#access", label: "アクセス" },
-          ].map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-
-        <Link
-          to="/contact"
-          className="ml-auto inline-flex items-center rounded-md bg-accent px-4 py-2 text-sm font-bold text-accent-ink transition-colors hover:bg-accent-strong md:ml-0"
-        >
-          ご相談はこちら
-        </Link>
-      </div>
-    </header>
-  );
-}
-
-/** 店のシンボル。画像を使わず、六角ボルトを模した図形で作っている */
-function Logo() {
-  return (
-    <span
-      aria-hidden
-      className="flex h-9 w-9 items-center justify-center bg-accent text-accent-ink"
-      style={{
-        clipPath:
-          "polygon(25% 2%, 75% 2%, 100% 50%, 75% 98%, 25% 98%, 0% 50%)",
-      }}
+    <div
+      role="img"
+      aria-label={`写真（準備中）：${photo.alt}`}
+      className={`relative isolate h-full w-full overflow-hidden bg-[#0f1413] ${className}`}
     >
-      <span className="text-base font-black">I</span>
-    </span>
-  );
-}
-
-function Hero() {
-  return (
-    <section className="relative overflow-hidden border-b border-line">
-      {/* 背景。斜めのストライプとオレンジの光で「工場の照明」らしさを出す */}
+      {/* 夕方の斜光を想定した暖色の明かりと、沈んだ影 */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        className="absolute inset-0"
         style={{
-          backgroundImage:
-            "repeating-linear-gradient(115deg, var(--color-accent) 0 2px, transparent 2px 22px)",
+          background:
+            "radial-gradient(120% 95% at 76% 16%, rgba(214,148,74,0.48) 0%, rgba(52,37,0,0.6) 38%, rgba(15,20,19,0.96) 78%)",
         }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-40 -right-32 h-[28rem] w-[28rem] rounded-full bg-accent/20 blur-3xl"
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(85% 75% at 10% 94%, rgba(23,63,56,0.9) 0%, transparent 62%)",
+        }}
+      />
+      {/* 斜めの細いストライプ。のっぺりした面に粒立ちを与える */}
+      <div
+        aria-hidden
+        className="absolute inset-0 opacity-[0.13]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(115deg, #f7f5f0 0 1px, transparent 1px 15px)",
+        }}
+      />
+      <p
+        className={`absolute right-0 bottom-0 left-0 py-4 text-[11px] leading-[1.4] tracking-[0.16em] text-ink/40 ${GUTTER}`}
+      >
+        {photo.alt}
+      </p>
+    </div>
+  );
+}
+
+/** 店のシンボル。spec の「3本の短いストローク＋2行のロゴタイプ」に倣っている */
+function Logo({ className = "" }: { className?: string }) {
+  return (
+    <span className={`inline-flex items-center gap-2.5 ${className}`}>
+      <span aria-hidden className="flex flex-col gap-[3px]">
+        <span className="block h-[2px] w-6 bg-current" />
+        <span className="block h-[2px] w-4 bg-current" />
+        <span className="block h-[2px] w-5 bg-current" />
+      </span>
+      <span className="text-[11px] leading-[1.3] font-bold tracking-[0.18em]">
+        IKEDA
+        <br />
+        MOTORCYCLES
+      </span>
+    </span>
+  );
+}
+
+/**
+ * ヒーロー。spec の full_bleed_hero に合わせ、全面の写真の上に
+ * ロゴ（左上）・見出し・本文（左下）・ボタン（右下）を置いている。
+ * ナビはヘッダーとして固定せず、写真の上に重ねて版面を邪魔しないようにした。
+ */
+function Hero() {
+  return (
+    <section className="relative isolate min-h-[620px] overflow-hidden min-[760px]:min-h-[682px]">
+      <div className="absolute inset-0">
+        <MediaSlot photo={PHOTOS.hero} eager />
+      </div>
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[rgba(3,20,23,0.10)]"
       />
 
-      <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <div>
-          <p className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1 text-xs font-medium tracking-wide text-accent">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            創業{FOUNDED_YEAR}年 ／ 整備士在籍4名
-          </p>
+      <div
+        className={`relative flex min-h-[620px] flex-col py-5 min-[760px]:min-h-[682px] min-[760px]:py-7 ${GUTTER}`}
+      >
+        <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-4">
+          <Logo className="w-24" />
+          <nav className="ml-auto hidden items-center gap-6 lg:flex">
+            {NAV.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="text-sm tracking-[0.08em] text-ink-muted transition-colors duration-[220ms] ease-out hover:text-ink"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        </div>
 
-          <h1 className="mt-6 text-5xl leading-[1.08] font-black tracking-tight sm:text-7xl">
+        <div className="mx-auto mt-14 w-full max-w-[1440px]">
+          <h1 className={`max-w-[700px] ${TYPE.display}`}>
             そのバイク、
             <br />
-            <span className="text-accent">まだ終わりじゃない。</span>
+            まだ終わりじゃない。
           </h1>
+        </div>
 
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">
+        <div className="mx-auto mt-12 flex w-full max-w-[1440px] flex-col gap-7 min-[760px]:mt-auto min-[760px]:flex-row min-[760px]:items-end min-[760px]:justify-between">
+          <p className={`max-w-[590px] text-ink-muted ${TYPE.body}`}>
             車検・修理・カスタム・引き取りまで、一台まるごとお任せいただける街の整備工場です。
             直すか買い替えるか迷っている段階から、遠慮なくご相談ください。
           </p>
-
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Link
-              to="/contact"
-              className="inline-flex items-center gap-2 rounded-md bg-accent px-6 py-3.5 text-base font-bold text-accent-ink transition-colors hover:bg-accent-strong"
-            >
-              無料で見積もりを頼む
-              <span aria-hidden>→</span>
-            </Link>
-            <a
-              href="#services"
-              className="inline-flex items-center rounded-md border border-line px-6 py-3.5 text-base font-bold text-ink transition-colors hover:border-accent hover:text-accent"
-            >
-              サービスを見る
-            </a>
-          </div>
-
-          <dl className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm">
-            {[
-              ["見積もり", "無料・追加費用なし"],
-              ["代車", "無料で貸し出し"],
-              ["対応", "国産・輸入・旧車"],
-            ].map(([label, value]) => (
-              <div key={label} className="flex items-baseline gap-2">
-                <dt className="text-ink-faint">{label}</dt>
-                <dd className="font-bold text-ink">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        {/* 受付情報のカード。写真の代わりに情報を置いて右側の重心を作る */}
-        <div className="rounded-2xl border border-line bg-surface/80 p-7 shadow-2xl shadow-black/40 backdrop-blur">
-          <p className="text-xs font-bold tracking-[0.2em] text-accent uppercase">
-            Reservation
-          </p>
-          <p className="mt-3 text-lg font-bold">まずはお電話ください</p>
-          <p className="mt-2 text-4xl font-black tracking-tight tabular-nums">
-            03-0000-0000
-          </p>
-          <p className="mt-1 text-sm text-ink-faint">
-            受付 9:00 - 19:00（水曜定休）
-          </p>
-
-          <ul className="mt-6 space-y-3 border-t border-line pt-6 text-sm">
-            {[
-              "症状が分からなくても大丈夫です",
-              "その場でおおよその費用をお伝えします",
-              "引き取りが必要な場合もご相談ください",
-            ].map((text) => (
-              <li key={text} className="flex gap-2.5 text-ink-muted">
-                <span className="mt-0.5 font-bold text-accent" aria-hidden>
-                  ✓
-                </span>
-                {text}
-              </li>
-            ))}
-          </ul>
+          <Link
+            to="/contact"
+            className={`${OUTLINE_CTA} w-full shrink-0 min-[760px]:w-auto`}
+          >
+            見積もりを依頼する
+          </Link>
         </div>
       </div>
     </section>
   );
 }
 
-function Stats() {
+/**
+ * 実績の帯。spec には対応するコンポーネントが無いが、
+ * 写真の面が続くなかで数字だけの区画を挟むと読みやすくなるため残している。
+ */
+function Record() {
   // 営業年数は創業年から計算する。固定の数字を書くと、年が明けるたびに
-  // ヒーローの「創業1998年」と食い違ってしまうため。
+  // 「創業1998年」の表記と食い違ってしまうため。
   const years = new Date().getFullYear() - FOUNDED_YEAR;
 
   return (
-    // ページ全体が暗いなかで、この帯だけオレンジで塗って区切りにする
-    <section className="bg-accent text-accent-ink">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 divide-accent-ink/15 sm:grid-cols-4 sm:divide-x">
+    <section className="bg-surface">
+      <div
+        className={`mx-auto grid max-w-[1440px] grid-cols-2 gap-x-7 gap-y-9 py-[52px] min-[760px]:grid-cols-4 ${GUTTER}`}
+      >
         {[
           [String(years), "年", "地元で営業"],
           ["12,000", "台", "累計整備実績"],
           ["4", "名", "国家資格整備士"],
           ["98", "%", "見積もり通りの請求"],
         ].map(([value, unit, label]) => (
-          <div key={label} className="px-5 py-9 text-center">
-            <p className="text-4xl font-black tracking-tight tabular-nums sm:text-5xl">
+          <div key={label}>
+            <p className={`tabular-nums ${TYPE.h2}`}>
               {value}
-              <span className="ml-0.5 text-base font-bold opacity-70">
+              <span className="ml-1 text-base tracking-normal text-ink-muted">
                 {unit}
               </span>
             </p>
-            <p className="mt-2 text-xs font-bold opacity-80 sm:text-sm">
+            <p className="mt-3 border-t border-line pt-3 text-sm text-ink-muted">
               {label}
             </p>
           </div>
@@ -302,273 +425,250 @@ function Stats() {
   );
 }
 
-function Services() {
+/** 店の紹介（spec の expertise: split_media） */
+function About() {
   return (
-    <Section
-      id="services"
-      eyebrow="Services"
-      title="できること"
-      lead="点検からカスタムまで、同じ工場のなかで完結します。他店で断られた内容もまずはご相談ください。"
-    >
-      <div className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line/60 sm:grid-cols-2 lg:grid-cols-3">
-        {services.map((service) => (
-          <article
-            key={service.no}
-            className="group relative overflow-hidden bg-surface p-8 transition-colors hover:bg-surface-raised"
-          >
-            {/* 背景の大きな連番。目印として薄く敷く */}
-            <span
-              aria-hidden
-              className="absolute -top-4 right-2 text-8xl font-black text-surface-raised tabular-nums transition-colors group-hover:text-accent/15"
-            >
-              {service.no}
-            </span>
-            {/* 左端のオレンジの帯。ホバーで伸びる */}
-            <span
-              aria-hidden
-              className="absolute inset-y-0 left-0 w-1 origin-top scale-y-0 bg-accent transition-transform group-hover:scale-y-100"
-            />
-            <div className="relative">
-              <h3 className="text-2xl font-black tracking-tight">
-                {service.title}
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-ink-muted">
-                {service.body}
-              </p>
-              <p className="mt-6 border-t border-line pt-4 text-lg font-black text-accent tabular-nums">
-                {service.price}
-              </p>
-            </div>
-          </article>
-        ))}
-      </div>
-      <p className="mt-4 text-xs text-ink-faint">
-        ※ 記載の金額は税込の目安です。車種・状態により変わりますので、正確な金額はお見積もりでご確認ください。
-      </p>
-    </Section>
-  );
-}
-
-function Flow() {
-  return (
-    <Section
-      id="flow"
-      tone="raised"
-      eyebrow="Flow"
-      title="ご依頼の流れ"
-      lead="お預かりしてから納車まで、金額とやることを毎回確認しながら進めます。"
-    >
-      <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {steps.map((step, index) => (
-          <li
-            key={step.title}
-            className="relative rounded-xl border border-line bg-surface p-6"
-          >
-            <span className="absolute -top-3 left-6 inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-black text-accent-ink tabular-nums">
-              {index + 1}
-            </span>
-            <h3 className="mt-2 text-lg font-bold">{step.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-              {step.body}
+    <section id="about" className="bg-shell">
+      <div className={SPLIT_MEDIA}>
+        {/* カンプでは見出しが段の左端、本文だけが一段下げて組まれている */}
+        <div className={`flex flex-col py-[52px] ${GUTTER}`}>
+          <h2 className={TYPE.h2}>{FOUNDED_YEAR}年から、この街で。</h2>
+          <div className="mt-9 flex flex-col gap-7 min-[760px]:ps-20">
+            <p className={`text-ink-muted ${TYPE.body}`}>
+              家族で営む小さな整備工場です。大きな看板も新しい設備も持っていませんが、
+              一台ずつ手をかける時間だけは削らずにやってきました。
             </p>
-          </li>
-        ))}
-      </ol>
-    </Section>
-  );
-}
-
-function Voices() {
-  return (
-    <Section
-      id="voices"
-      eyebrow="Voices"
-      title="お客様の声"
-      lead="ご来店いただいた方からいただいた感想です（掲載はすべて架空のサンプルです）。"
-    >
-      <div className="grid gap-5 md:grid-cols-3">
-        {voices.map((voice) => (
-          <figure
-            key={voice.who}
-            className="flex h-full flex-col rounded-xl border border-line bg-surface p-6"
-          >
-            <span aria-hidden className="text-3xl leading-none text-accent/60">
-              &ldquo;
-            </span>
-            <blockquote className="mt-2 flex-1 text-sm leading-relaxed text-ink-muted">
-              {voice.text}
-            </blockquote>
-            <figcaption className="mt-5 border-t border-line pt-4 text-xs text-ink-faint">
-              {voice.who}
-            </figcaption>
-          </figure>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function Access() {
-  const rows = [
-    ["店名", "バイクショップイケダ"],
-    ["所在地", "東京都豊島区西巣鴨1-1（架空の住所です）"],
-    ["電話", "03-0000-0000"],
-    ["営業時間", "9:00 - 19:00"],
-    ["定休日", "毎週水曜日・第2木曜日"],
-    ["駐車場", "店舗前に3台（バイクは10台まで）"],
-  ];
-
-  return (
-    <Section
-      id="access"
-      tone="raised"
-      eyebrow="Access"
-      title="店舗情報"
-      lead="都営三田線 西巣鴨駅から徒歩5分。国道沿いのオレンジの看板が目印です。"
-    >
-      <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-        <dl className="overflow-hidden rounded-xl border border-line bg-surface">
-          {rows.map(([label, value], index) => (
-            <div
-              key={label}
-              className={`grid grid-cols-[7rem_1fr] gap-4 px-6 py-4 text-sm ${
-                index === 0 ? "" : "border-t border-line"
-              }`}
-            >
-              <dt className="text-ink-faint">{label}</dt>
-              <dd className="font-medium break-words">{value}</dd>
-            </div>
-          ))}
-        </dl>
-
-        {/* 地図は用意できないため、簡易的な案内図を図形で表現している */}
-        <div className="relative flex min-h-[15rem] items-center justify-center overflow-hidden rounded-xl border border-line bg-surface">
-          <div
-            aria-hidden
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage:
-                "linear-gradient(var(--color-line) 1px, transparent 1px), linear-gradient(90deg, var(--color-line) 1px, transparent 1px)",
-              backgroundSize: "32px 32px",
-            }}
-          />
-          <div
-            aria-hidden
-            className="absolute top-1/2 -left-10 h-10 w-[130%] -translate-y-1/2 -rotate-6 bg-surface-raised"
-          />
-          <div className="relative text-center">
-            <Logo />
-            <p className="mt-3 text-sm font-bold">バイクショップイケダ</p>
-            <p className="mt-1 text-xs text-ink-faint">
-              西巣鴨駅から国道沿いに徒歩5分
+            <p className={`text-ink-muted ${TYPE.body}`}>
+              いい整備は、正直なやりとりから始まると思っています。だから見積もりは無料で、
+              金額の内訳も、交換する部品の理由も、作業の前に必ずご説明します。
             </p>
           </div>
         </div>
+        <MediaSlot
+          photo={PHOTOS.about}
+          className="min-h-[420px] min-[760px]:min-h-full"
+        />
       </div>
-    </Section>
+    </section>
   );
 }
 
-function ClosingCta() {
+/** 他店との違い（spec の differentiators: card_grid） */
+function Differentiators() {
   return (
-    // ページの締めくくり。ここだけ全面オレンジにして、最後にもう一度目を引く
-    <section className="relative overflow-hidden bg-accent text-accent-ink">
+    <section className="bg-surface">
       <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.12]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(115deg, var(--color-accent-ink) 0 2px, transparent 2px 22px)",
-        }}
-      />
-      <div className="relative mx-auto max-w-6xl px-4 py-24 text-center sm:px-6">
-        <h2 className="text-4xl leading-[1.15] font-black tracking-tight sm:text-5xl">
-          迷っている時間も、
-          <br className="sm:hidden" />
-          整備の時間にしませんか。
-        </h2>
-        <p className="mx-auto mt-5 max-w-2xl leading-relaxed opacity-90">
-          見積もりは無料です。直すべきか、乗り換えるべきか。判断に必要な材料をそろえてお渡しします。
-        </p>
-        <div className="mt-9 flex flex-wrap justify-center gap-3">
-          <Link
-            to="/contact"
-            className="inline-flex items-center gap-2 rounded-md bg-shell px-8 py-4 text-base font-black text-ink transition-transform hover:-translate-y-0.5"
-          >
-            お問い合わせフォームへ
-            <span aria-hidden>→</span>
-          </Link>
-          <a
-            href="tel:0300000000"
-            className="inline-flex items-center rounded-md border-2 border-accent-ink/40 px-8 py-4 text-base font-black transition-colors hover:bg-accent-ink/10"
-          >
-            03-0000-0000 に電話する
-          </a>
+        className={`mx-auto max-w-[1440px] py-[52px] ${GUTTER}`}
+      >
+        <h2 className={`max-w-[700px] ${TYPE.h2}`}>選ばれている理由</h2>
+        <div className="mt-12 grid gap-7 min-[760px]:grid-cols-3">
+          {differentiators.map((card) => (
+            <article key={card.title} className="flex flex-col">
+              <MediaSlot photo={card.photo} className="h-[300px]" />
+              {/* カンプではカード本文は中央揃え */}
+              <div className="flex flex-1 flex-col bg-surface-raised p-7 text-center">
+                <h3 className={TYPE.h3}>{card.title}</h3>
+                <p className="mt-4 text-[15px] leading-[1.5] text-ink-muted">
+                  {card.body}
+                </p>
+              </div>
+            </article>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-function SiteFooter() {
+/** サービスと料金（spec の standard_pricing: data_table） */
+function Services() {
   return (
-    <footer className="border-t border-line bg-surface/40">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-8 text-xs text-ink-faint sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <Logo />
-          <span>© バイクショップイケダ（架空の店舗です）</span>
+    <section id="services" className="bg-shell">
+      <div className={`mx-auto max-w-[1440px] py-[52px] ${GUTTER}`}>
+        {/* カンプでは注記が見出しと同じ行の右端に置かれている */}
+        <div className="flex flex-col gap-4 min-[760px]:flex-row min-[760px]:items-start min-[760px]:justify-between">
+          <h2 className={`max-w-[700px] ${TYPE.h2}`}>サービスと料金</h2>
+          <p className="max-w-[260px] text-sm leading-[1.5] text-ink-muted min-[760px]:text-right">
+            金額は税込の目安です。車種・状態により変わります。
+          </p>
         </div>
-        {/* 従業員向けの入口。お客様向けの導線と混ざらないよう、控えめに置いている */}
-        <Link
-          to="/login"
-          className="ml-auto transition-colors hover:text-accent"
-        >
-          スタッフの方はこちら
-        </Link>
+
+        {/* 640px 未満では表を横スクロールさせる（列を潰すと料金が読めなくなるため） */}
+        <div className="mt-12 overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-center">
+            <thead className="bg-surface">
+              <tr>
+                {["サービス", "料金の目安", "含まれるもの"].map((column) => (
+                  <th key={column} scope="col" className="px-6 py-5 font-bold">
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {services.map((service) => (
+                <tr key={service.title} className="border-b border-line">
+                  <td className="px-6 py-6">
+                    <p className="text-lg">{service.title}</p>
+                    <p className="mt-2 text-sm leading-[1.5] text-ink-muted">
+                      {service.body}
+                    </p>
+                  </td>
+                  <td className="px-6 py-6 text-lg whitespace-nowrap tabular-nums">
+                    {service.price}
+                  </td>
+                  <td className="px-6 py-6 text-sm leading-[1.5] text-ink-muted">
+                    {service.includes}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </footer>
+    </section>
+  );
+}
+
+/** ご依頼の流れ（spec の core_services: paired_rows） */
+function Flow() {
+  return (
+    <section id="flow" className="bg-shell">
+      <div className={`mx-auto max-w-[1440px] py-[52px] ${GUTTER}`}>
+        <h2 className={`max-w-[700px] ${TYPE.h2}`}>ご依頼の流れ</h2>
+        <ol className="mt-12 flex flex-col gap-2.5 min-[760px]:gap-6">
+          {steps.map((step, index) => (
+            <li
+              key={step.title}
+              className="grid gap-2.5 min-[760px]:grid-cols-[32%_1fr] min-[760px]:gap-[2%]"
+            >
+              {/* カンプでは左右どちらの箱も文字が中央に組まれている */}
+              <div className="flex items-center justify-center gap-4 rounded-3xl bg-surface px-7 py-6">
+                <span className="text-sm text-ink-faint tabular-nums">
+                  0{index + 1}
+                </span>
+                <span className="text-lg font-bold">{step.title}</span>
+              </div>
+              <div className="flex items-center justify-center rounded-3xl border border-line-strong px-7 py-6">
+                <p className={`text-center text-ink-muted ${TYPE.body}`}>
+                  {step.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+/** お客様の声。card_grid と同じ「角を落とさない面」で揃えている */
+function Voices() {
+  return (
+    <section id="voices" className="bg-shell">
+      <div className={`mx-auto max-w-[1440px] py-[52px] ${GUTTER}`}>
+        <h2 className={`max-w-[700px] ${TYPE.h2}`}>お客様の声</h2>
+        <p className="mt-7 max-w-[780px] text-sm text-ink-faint">
+          ご来店いただいた方からいただいた感想です（掲載はすべて架空のサンプルです）。
+        </p>
+        <div className="mt-12 grid gap-7 min-[760px]:grid-cols-3">
+          {voices.map((voice) => (
+            <figure
+              key={voice.who}
+              className="flex h-full flex-col bg-surface-raised p-7"
+            >
+              <blockquote className="flex-1 text-[17px] leading-[1.45]">
+                {voice.text}
+              </blockquote>
+              <figcaption className="mt-7 border-t border-line pt-5 text-sm text-ink-faint">
+                {voice.who}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** 店舗情報（spec の promise: 茶の地に split_media） */
+function Access() {
+  return (
+    <section id="access" className="bg-surface-raised">
+      <div className="mx-auto grid w-full max-w-[1440px] min-[760px]:min-h-[684px] min-[760px]:grid-cols-[50.8%_49.2%]">
+        {/* About と同じ組み方（見出しは段の左端、中身は一段下げる） */}
+        <div className={`flex flex-col py-[52px] ${GUTTER}`}>
+          <h2 className={TYPE.h2}>店舗情報</h2>
+          <div className="mt-9 min-[760px]:ps-20">
+            <p className={`text-ink-muted ${TYPE.body}`}>
+              都営三田線 西巣鴨駅から徒歩5分。国道沿いの、白い看板が目印です。
+            </p>
+            <dl className="mt-7 border-t border-line">
+              {shopInfo.map(([label, value]) => (
+                <div
+                  key={label}
+                  className="grid grid-cols-[6.5rem_1fr] gap-4 border-b border-line py-4 text-[15px]"
+                >
+                  <dt className="text-ink-faint">{label}</dt>
+                  <dd className="break-words">{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            {/* ページ末の行き先はここひとつ。締めの節を別に設けると写真も文言も重なるため */}
+            <p className={`mt-9 text-ink-muted ${TYPE.body}`}>
+              直すか、乗り換えるか。迷っている段階からご相談ください。
+            </p>
+            <Link
+              to="/contact"
+              className={`${OUTLINE_CTA} mt-7 w-full min-[760px]:w-auto`}
+            >
+              お問い合わせフォームへ
+            </Link>
+          </div>
+        </div>
+        <MediaSlot
+          photo={PHOTOS.shop}
+          className="min-h-[420px] min-[760px]:min-h-full"
+        />
+      </div>
+    </section>
   );
 }
 
 /**
- * 各セクションの共通枠（見出しの体裁をそろえるため）。
- * tone を交互に変えて、縦に長いページでも区切りが分かるようにしている。
+ * サイト共通のフッター（spec の site_footer）。
+ *
+ * 住所・営業時間・電話は直前の店舗情報の節に載っているため、ここでは繰り返さない。
+ * 代わりに、サイト全体にかかる情報（著作権表示・個人情報の取り扱い）を置いている。
  */
-function Section({
-  id,
-  eyebrow,
-  title,
-  lead,
-  tone = "base",
-  children,
-}: {
-  id: string;
-  eyebrow: string;
-  title: string;
-  lead: string;
-  tone?: "base" | "raised";
-  children: ReactNode;
-}) {
+function SiteFooter() {
   return (
-    <section
-      id={id}
-      className={`scroll-mt-16 border-b border-line ${
-        tone === "raised" ? "bg-surface/40" : ""
-      }`}
-    >
-      <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
-        <div className="flex items-center gap-3">
-          <span aria-hidden className="h-px w-10 bg-accent" />
-          <p className="text-xs font-black tracking-[0.3em] text-accent uppercase">
-            {eyebrow}
-          </p>
+    <footer className="border-t border-line bg-shell">
+      <div
+        className={`mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-7 gap-y-4 py-7 ${GUTTER}`}
+      >
+        <Logo />
+        <span className="text-xs text-ink-faint">
+          © バイクショップイケダ（架空の店舗です）
+        </span>
+        <div className="ml-auto flex items-center gap-4 text-[13px] tracking-[0.04em]">
+          <Link
+            to="/privacy"
+            className="text-ink-muted transition-colors duration-[220ms] ease-out hover:text-ink"
+          >
+            プライバシーポリシー
+          </Link>
+          <span aria-hidden className="h-3 w-px shrink-0 bg-line" />
+          {/* 従業員向けの入口。お客様向けの導線と混ざらないよう、控えめに置いている */}
+          <Link
+            to="/login"
+            className="text-ink-faint transition-colors duration-[220ms] ease-out hover:text-ink"
+          >
+            スタッフの方はこちら
+          </Link>
         </div>
-        <h2 className="mt-4 text-4xl leading-[1.1] font-black tracking-tight sm:text-5xl">
-          {title}
-        </h2>
-        <p className="mt-4 max-w-2xl leading-relaxed text-ink-muted">{lead}</p>
-        <div className="mt-12">{children}</div>
       </div>
-    </section>
+    </footer>
   );
 }
