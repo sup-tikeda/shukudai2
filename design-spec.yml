@@ -1,0 +1,285 @@
+schema_version: "1.0"
+project:
+  name: "Ironclad Auto Care"
+  type: "responsive marketing website"
+  source_canvas:
+    page_width_px: 1214
+    page_height_px: 2048
+  notes:
+    - "Measurements are inferred from the supplied screenshots and may require small optical adjustments."
+    - "Use editorial full-bleed photography with warm highlights, deep shadows, and high contrast."
+
+assets:
+  reference_images:
+    home: "docs/design-reference/Home.png"
+    pricing: "docs/design-reference/Pricing.png"
+    services: "docs/design-reference/Services.png"
+    footer_contact: "docs/design-reference/4.png"
+  image_slots:
+    home_hero:
+      description: "Dark teal supercar on a road at golden hour, mountains behind it"
+      treatment: { fit: cover, position: "center 58%", overlay: "rgba(3, 20, 23, 0.10)" }
+    expertise:
+      description: "Mechanic holding an adjustable wrench in front of a tool wall"
+      treatment: { fit: cover, position: center }
+    honesty:
+      description: "Mechanic working on a wheel in a garage"
+      treatment: { fit: cover, position: center }
+    turnaround:
+      description: "Mechanic selecting a tool from a pegboard"
+      treatment: { fit: cover, position: center }
+    guarantee:
+      description: "Welder working at a bench in a garage"
+      treatment: { fit: cover, position: center }
+    pricing_hero:
+      description: "Tattooed mechanic wiping a dipstick with a shop rag"
+      treatment: { fit: cover, position: "center 48%", overlay: "rgba(0, 18, 20, 0.10)" }
+    pricing_promise:
+      description: "Two mechanics exchanging wrenches in front of a red tool chest"
+      treatment: { fit: cover, position: center }
+    services_hero:
+      description: "Mechanic's feet beside a rolling tool cart under a vehicle"
+      treatment: { fit: cover, position: "center 52%" }
+    services_closer:
+      description: "Mechanic lying under the front bumper of a car"
+      treatment: { fit: cover, position: center, overlay: "rgba(0, 12, 14, 0.08)" }
+    footer_banner:
+      description: "Mechanic pulling on bright blue work gloves at a workbench"
+      treatment: { fit: cover, position: "center 40%" }
+
+design_tokens:
+  colors:
+    ink: "#1b201f"
+    pine: "#173f38"
+    espresso: "#342500"
+    white: "#f7f5f0"
+    rule: "rgba(247, 245, 240, 0.68)"
+    transparent: "transparent"
+  typography:
+    family: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+    weights: { regular: 400, semibold: 600, bold: 700 }
+    desktop:
+      display: { size_px: 78, line_height: 0.98, weight: 400, tracking_em: -0.045 }
+      h1: { size_px: 50, line_height: 1.02, weight: 400, tracking_em: -0.035 }
+      h2: { size_px: 48, line_height: 1.06, weight: 400, tracking_em: -0.035 }
+      h3: { size_px: 22, line_height: 1.2, weight: 700 }
+      body: { size_px: 20, line_height: 1.22, weight: 400 }
+      button: { size_px: 20, line_height: 1, weight: 400 }
+    mobile:
+      display: { size_px: 48, line_height: 1.0, weight: 400, tracking_em: -0.04 }
+      h1: { size_px: 40, line_height: 1.04, weight: 400 }
+      h2: { size_px: 34, line_height: 1.08, weight: 400 }
+      body: { size_px: 17, line_height: 1.3, weight: 400 }
+  spacing:
+    page_gutter_px: 28
+    section_y_px: 52
+    gap_sm_px: 16
+    gap_md_px: 28
+    gap_lg_px: 48
+  radii:
+    pill_px: 999
+    card_px: 0
+  borders:
+    light: "1px solid rgba(247, 245, 240, 0.82)"
+    rule: "1px solid rgba(247, 245, 240, 0.58)"
+  motion:
+    duration_ms: 220
+    easing: "ease-out"
+    hover:
+      button: { background: "#f7f5f0", color: "#1b201f" }
+
+global:
+  body:
+    margin: 0
+    background: "#1b201f"
+    color: "#f7f5f0"
+    max_content_width_px: 1440
+    overflow_x: hidden
+  logo:
+    text_lines: ["IRONCLAD", "AUTO CARE"]
+    mark: "three short white speed strokes"
+    color: "#f7f5f0"
+  components:
+    outline_cta:
+      height_px: 58
+      padding_x_px: 44
+      border: "1px solid rgba(247, 245, 240, 0.90)"
+      radius_px: 999
+      text_transform: uppercase
+      background: transparent
+    split_media:
+      desktop_columns: "41.5% 58.5%"
+      min_height_px: 684
+      collapse_below_px: 760
+    site_footer:
+      image_height_px: 568
+      info_height_px: 200
+      info_background: "#1b201f"
+      info_grid: ["24%", "34%", "24%", "18%"]
+      content:
+        office:
+          title: "Main office"
+          lines: ["123 Anywhere St. Any City,", "State Any Country, (123) 456 7890"]
+        social:
+          title: "Social media"
+          value: "@reallygreatsite"
+        email:
+          title: "Email us"
+          value: "hello@reallygreatsite.com"
+
+pages:
+  home:
+    route: "/"
+    reference: "Home.png"
+    sections:
+      - id: hero
+        type: full_bleed_hero
+        height_px: 682
+        background_asset: home_hero
+        padding_px: 28
+        logo: { position: top_left, width_px: 96 }
+        headline:
+          text: "Keeping you safe\nand road-ready."
+          position: { x_px: 28, y_px: 132 }
+          style: display
+          max_width_px: 700
+        body:
+          text: "At Ironclad Auto Care, we treat every vehicle like it’s our own — offering honest, high-quality repairs and maintenance that keep you moving confidently."
+          position: bottom_left
+          max_width_px: 590
+        cta:
+          label: "BOOK YOUR SERVICE"
+          href: "#booking"
+          position: bottom_right
+          component: outline_cta
+          width_px: 310
+      - id: expertise
+        type: split_media
+        background: "#1b201f"
+        heading: "Ironclad expertise"
+        body:
+          - "We’re a locally owned auto shop built on trust, skill, and a love for the open road."
+          - "We believe great service starts with genuine relationships — that means honest estimates, fair pricing, and clear communication every step of the way."
+        image_asset: expertise
+      - id: differentiators
+        type: card_grid
+        background: "#173f38"
+        heading: "What sets us apart"
+        columns: 3
+        cards:
+          - { image_asset: honesty, title: "Honesty First", body: "No upsells, no surprises — just straightforward advice and reliable work." }
+          - { image_asset: turnaround, title: "Quick Turnaround", body: "We respect your time and aim for same-day service whenever possible." }
+          - { image_asset: guarantee, title: "Quality Guaranteed", body: "We use only trusted parts and back all repairs with a 12-month warranty." }
+        card_body_background: "#342500"
+
+  pricing:
+    route: "/pricing"
+    reference: "Pricing.png"
+    sections:
+      - id: pricing_hero
+        type: full_bleed_hero
+        height_px: 682
+        background_asset: pricing_hero
+        padding_px: 28
+        headline: { text: "Fair prices. Quality work.\nZero surprises.", style: h1, position: top_left, max_width_px: 560 }
+        body:
+          text: "We believe in total transparency. Before any job starts, you’ll get a detailed estimate so you can make the right decision for your vehicle — no hidden fees, no pressure."
+          position: bottom_left
+          max_width_px: 780
+      - id: standard_pricing
+        type: data_table
+        background: "#1b201f"
+        padding_px: 28
+        heading: "Pricing for standard services"
+        note: "Prices may vary based on vehicle type and condition."
+        header_background: "#173f38"
+        columns: ["Service", "Starting at", "Includes"]
+        rows:
+          - ["Oil Change", "$45", "Filter, fluid top-off, safety check"]
+          - ["Brake Pad Replacement", "$150 per axle", "Parts + labor"]
+          - ["Tire Rotation", "$25", "4-wheel rotation and inspection"]
+          - ["AC Recharge", "$120", "Diagnostic + full refill"]
+          - ["Check Engine Light Scan", "$60", "Fee waived with service"]
+      - id: promise
+        type: split_media
+        background: "#342500"
+        desktop_columns: "50.8% 49.2%"
+        heading: "Our promise"
+        body:
+          - "We stand by every repair."
+          - "That’s why all parts and labor are backed by a 12-month / 12,000-mile warranty — guaranteed."
+        image_asset: pricing_promise
+
+  services:
+    route: "/services"
+    reference: "Services.png"
+    sections:
+      - id: services_hero
+        type: full_bleed_hero
+        height_px: 682
+        background_asset: services_hero
+        padding_px: 28
+        headline: { text: "Complete auto care, all in one place.", style: h1, position: bottom_left, max_width_px: 760 }
+        body: { text: "From preventive maintenance to complex diagnostics, we’ve got you covered.", position: bottom_right, max_width_px: 380 }
+      - id: core_services
+        type: paired_rows
+        background: "#1b201f"
+        padding_px: 28
+        heading: "Our core services"
+        row_gap_px: 24
+        label_width_percent: 32
+        description_width_percent: 66
+        label_background: "#173f38"
+        label_radius_px: 24
+        description_border: "1px solid rgba(247, 245, 240, 0.82)"
+        description_radius_px: 24
+        rows:
+          - label: "Preventive Maintenance"
+            description: "Oil & filter changes, fluid checks, tire rotation, and seasonal inspections — small jobs that prevent big repairs."
+          - label: "Diagnostics & Repairs"
+            description: "Accurate troubleshooting for engines, brakes, suspension, or transmission issues — fixed right the first time."
+          - label: "Tires & Alignment"
+            description: "New tires, balancing, and four-wheel alignment for better mileage and safety."
+          - label: "Specialty Services"
+            description: "AC repair, electrical diagnostics, exhaust work, and performance tuning — because every car deserves expert attention."
+      - id: services_closer
+        type: full_bleed_image_cta
+        height_px: 684
+        background_asset: services_closer
+        cta: { label: "VIEW PRICING", href: "/pricing", position: top_right, component: outline_cta, width_px: 310 }
+        quote: { text: "“From check engine lights to brake\njobs — we’ve got you covered.”", position: bottom_left, style: h1, max_width_px: 700 }
+
+  contact_footer:
+    reference: "4.png"
+    usage: "Append to all pages when the full site footer is required."
+    component: site_footer
+    background_asset: footer_banner
+
+responsive:
+  breakpoints:
+    mobile_max_px: 759
+    tablet_min_px: 760
+    desktop_min_px: 1024
+  mobile_rules:
+    page_gutter_px: 20
+    hero_height_px: 620
+    split_media:
+      columns: 1
+      text_first: true
+      image_min_height_px: 420
+    card_grid:
+      columns: 1
+    paired_rows:
+      columns: 1
+      gap_px: 10
+    data_table:
+      behavior: "horizontal scroll below 640px; keep a 720px minimum table width"
+    footer:
+      info_grid_columns: 1
+      image_height_px: 380
+      gap_px: 24
+  accessibility:
+    text_contrast_target: "WCAG AA"
+    min_touch_target_px: 44
+    focus_ring: "2px solid #f7f5f0"
+    reduced_motion: "disable non-essential transitions when prefers-reduced-motion is set"
