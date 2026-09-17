@@ -3,6 +3,22 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { DetailItem, DetailList } from "~/components/ui/layout";
 
 describe("DetailList / DetailItem", () => {
+  it("スマホ用に、ラベルの下に値を置く縦積みも同時に描画する", () => {
+    const html = renderToStaticMarkup(
+      <DetailList>
+        <DetailItem label="車両番号">新宿 な 33-44</DetailItem>
+        <DetailItem label="メーカー">スズキ</DetailItem>
+      </DetailList>,
+    );
+
+    // 縦積みはmd未満、表はmd以上でだけ出す
+    expect(html).toContain('<dl class="divide-y divide-line md:hidden">');
+    expect(html).toContain("hidden overflow-x-auto px-5 py-5 md:block");
+    // 表と縦積みで1回ずつ、合わせて2回出る
+    expect(html.match(/車両番号/g)?.length).toBe(2);
+  });
+
+
   it("項目が少ないときは、2つずつ横に並べて2段にする", () => {
     const html = renderToStaticMarkup(
       <DetailList>

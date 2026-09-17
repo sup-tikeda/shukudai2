@@ -73,10 +73,13 @@ export function AppShell({
   );
 
   return (
-    // 画面の高さに収める。はみ出す部分は本文の中だけでスクロールさせる
-    <div className="flex h-screen overflow-hidden bg-shell text-ink">
+    // 画面の高さに収める。はみ出す部分は本文の中だけでスクロールさせる。
+    // 高さは h-screen（100vh）ではなく h-dvh を使う。スマホのブラウザは
+    // アドレスバーの出し入れで表示領域が伸び縮みするが、100vh はいちばん高い状態で
+    // 固定されるため、下端のボタンや一覧の最終行が画面の外に隠れてしまう。
+    <div className="flex h-dvh overflow-hidden bg-shell text-ink">
       {/* 左サイドバー。広い画面では常に出したままにして、現在地が分かるようにする */}
-      {/* 高さは親（h-screen）に合わせて自動で伸びる（align-items: stretch） */}
+      {/* 高さは親（h-dvh）に合わせて自動で伸びる（align-items: stretch） */}
       <aside className="hidden w-56 shrink-0 flex-col border-r border-line bg-surface lg:flex">
         <Link to="/" className="flex items-center gap-2.5 px-5 py-4">
           <BrandMark />
@@ -124,42 +127,53 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* 狭い画面向け。サイドバーの代わりに上部へ横並びで出す */}
         <header className="z-30 shrink-0 border-b border-line bg-surface lg:hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5">
-            <Link to="/" className="flex items-center gap-2">
+          {/*
+            1段目：店名とログアウト。
+            スマホでは、これらとメニューを1行に詰め込むとメニューがほとんど見えなく
+            なるため、段を分けてメニューに横幅を全部使わせる。
+          */}
+          <div className="flex items-center justify-between gap-2 px-4 py-2">
+            <Link to="/" className="flex min-w-0 items-center gap-2">
               <BrandMark />
-            </Link>
-            {/*
-              サイドバーでは「設定」を下端に離して置いているが、狭い画面にはその置き場が
-              無いため、業務メニューの後ろに続けて出す。ここに無いと、admin が
-              スマホ・タブレットから設定へ入れなくなる。
-            */}
-            <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-              {menu}
-              {isAdmin ? (
-                <Link
-                  to="/master"
-                  className={navLink({ active: false })}
-                  activeProps={{ className: navLink({ active: true }) }}
-                >
-                  <IconSettings />
-                  設定
-                </Link>
-              ) : null}
-            </nav>
-            {/* 名前は幅に余裕がある時だけ。狭い画面ではメニューの表示を優先する */}
-            {sessionUser ? (
-              <span className="hidden shrink-0 text-[11px] whitespace-nowrap text-ink-faint sm:inline">
-                {sessionUser.name}
+              <span className="truncate text-sm font-black tracking-widest text-ink uppercase">
+                Ikeda
               </span>
-            ) : null}
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className={button({ variant: "ghost", size: "sm" })}
-            >
-              ログアウト
-            </button>
+            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              {/* 名前は幅に余裕がある時だけ。狭い画面ではログアウトの表示を優先する */}
+              {sessionUser ? (
+                <span className="hidden text-[11px] whitespace-nowrap text-ink-faint sm:inline">
+                  {sessionUser.name}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className={button({ variant: "ghost", size: "sm" })}
+              >
+                ログアウト
+              </button>
+            </div>
           </div>
+          {/*
+            2段目：業務メニュー。入りきらない分は横スクロールで送る。
+            サイドバーでは「設定」を下端に離して置いているが、狭い画面にはその置き場が
+            無いため、業務メニューの後ろに続けて出す。ここに無いと、admin が
+            スマホ・タブレットから設定へ入れなくなる。
+          */}
+          <nav className="flex gap-1 overflow-x-auto border-t border-line px-3 py-1.5 [&>a]:shrink-0">
+            {menu}
+            {isAdmin ? (
+              <Link
+                to="/master"
+                className={navLink({ active: false })}
+                activeProps={{ className: navLink({ active: true }) }}
+              >
+                <IconSettings />
+                設定
+              </Link>
+            ) : null}
+          </nav>
         </header>
 
         {/*
@@ -345,7 +359,7 @@ export function PageHeader({
           ) : null}
         </div>
       </div>
-      {actions ? <div className="flex gap-2">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
   );
 }
@@ -386,7 +400,7 @@ export function Card({
               </span>
             ) : null}
           </h2>
-          {actions ? <div className="flex gap-2">{actions}</div> : null}
+          {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
         </div>
       ) : null}
       {fill ? (
@@ -450,10 +464,22 @@ export function DataTable<T>({
         ? "text-center"
         : "text-left";
 
+  // 狭い画面（スマホ）向けのカード表示で使う、列の振り分け。
+  // 1列目をカードの見出し、"actions" 列を操作ボタン、残りをラベル｜値の行にする。
+  const primaryColumn = columns[0];
+  const actionColumns = columns.filter((column) => column.key === "actions");
+  const detailColumns = columns.filter(
+    (column) => column !== primaryColumn && column.key !== "actions",
+  );
+
   return (
-    // 列が多いので、表の中だけ本文より一段小さい文字にして収まりを良くする。
-    // 最小幅を決めておき、狭い画面では列を潰さず横スクロールさせる。
-    <table className="w-full min-w-[44rem] border-collapse text-[13px]">
+    <>
+    {/*
+      広い画面：列が多いので、表の中だけ本文より一段小さい文字にして収まりを良くする。
+      最小幅を決めておき、列を潰さず横スクロールさせる。
+      スマホ（md未満）では下のカード表示に切り替えるため、ここでは隠す。
+    */}
+    <table className="hidden w-full min-w-[44rem] border-collapse text-[13px] md:table">
       <thead>
         <tr>
           {columns.map((column) => (
@@ -494,6 +520,57 @@ export function DataTable<T>({
         ))}
       </tbody>
     </table>
+
+    {/*
+      スマホ：1件を1枚のカードにして縦に積む。
+      表のまま横スクロールさせると、右へ送った時にどの行を見ているのか分からなくなり、
+      指1本では読み進められないため、項目名と値を縦に並べ替える。
+    */}
+    <ul className="md:hidden">
+      {rows.map((row) => (
+        <li
+          key={rowKey(row)}
+          className="border-b border-line px-4 py-3.5 last:border-b-0"
+        >
+          {primaryColumn ? (
+            <div className="text-sm font-medium break-words">
+              {primaryColumn.render(row)}
+            </div>
+          ) : null}
+          {detailColumns.length > 0 ? (
+            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[13px]">
+              {detailColumns.map((column) => (
+                <Fragment key={column.key}>
+                  {/* 見出しの無い列は値だけを1行いっぱいに出す */}
+                  {column.header ? (
+                    <>
+                      <dt className="pt-0.5 text-[11px] font-bold tracking-wide whitespace-nowrap text-ink-faint">
+                        {column.header}
+                      </dt>
+                      <dd className="min-w-0 break-words">
+                        {column.render(row)}
+                      </dd>
+                    </>
+                  ) : (
+                    <dd className="col-span-2 min-w-0 break-words">
+                      {column.render(row)}
+                    </dd>
+                  )}
+                </Fragment>
+              ))}
+            </dl>
+          ) : null}
+          {actionColumns.length > 0 ? (
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              {actionColumns.map((column) => (
+                <Fragment key={column.key}>{column.render(row)}</Fragment>
+              ))}
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+    </>
   );
 }
 
@@ -551,7 +628,9 @@ export function ListToolbar({
 }) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
-      <div className="relative min-w-0 flex-1">
+      {/* スマホでは絞り込み欄だけで1行を使う。並べ替えと横に並べると、
+          どちらも中途半端な幅になって文字が読めなくなるため。 */}
+      <div className="relative min-w-0 basis-full sm:flex-1 sm:basis-auto">
         <input
           type="search"
           value={query}
@@ -764,13 +843,33 @@ export function DetailList({ children }: { children: ReactNode }) {
   if (pending.length > 0) rows.push(pending);
 
   return (
-    // 表に w-full は付けない。付けると値の列に余った幅が押し付けられ、
-    // 短い値（電話番号など）の右側にだけ大きな空白ができてしまうため。
-    // 幅を指定しない表は中身の長さに合わせて縮む（HTMLの既定の挙動）ので、
-    // 値が短ければ表そのものも小さくなる。項目を横に並べるほど自然と幅は
-    // 広がるので、これで「横に広げる」意図と両立できる。長い住所などが
-    // 来た時のために max-w-6xl だけ上限として残す。
-    <div className="overflow-x-auto px-5 py-5">
+    <>
+    {/*
+      スマホ：ラベルと値を横に並べる表は、項目が4組も並ぶと1画面に収まらない。
+      ラベルの下に値を置く縦積みに切り替え、指で上から読み下せるようにする。
+    */}
+    <dl className="divide-y divide-line md:hidden">
+      {items.map((item) => (
+        <div key={item.props.label} className="px-4 py-2.5">
+          <dt className="text-[11px] font-bold tracking-wide text-ink-faint">
+            {item.props.label}
+          </dt>
+          <dd className="mt-0.5 text-[13px] break-words whitespace-pre-wrap">
+            {item.props.children || <span className="text-ink-faint">-</span>}
+          </dd>
+        </div>
+      ))}
+    </dl>
+
+    {/*
+      広い画面：表に w-full は付けない。付けると値の列に余った幅が押し付けられ、
+      短い値（電話番号など）の右側にだけ大きな空白ができてしまうため。
+      幅を指定しない表は中身の長さに合わせて縮む（HTMLの既定の挙動）ので、
+      値が短ければ表そのものも小さくなる。項目を横に並べるほど自然と幅は
+      広がるので、これで「横に広げる」意図と両立できる。長い住所などが
+      来た時のために max-w-6xl だけ上限として残す。
+    */}
+    <div className="hidden overflow-x-auto px-5 py-5 md:block">
       <table className="max-w-6xl border-collapse border border-line">
         <tbody>
           {rows.map((row, rowIndex) => (
@@ -810,6 +909,7 @@ export function DetailList({ children }: { children: ReactNode }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

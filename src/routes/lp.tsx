@@ -51,7 +51,7 @@ const TYPE = {
  * 310px は最小幅として使い、文字数に応じて横に伸ばす。
  */
 const OUTLINE_CTA =
-  "inline-flex h-[58px] min-w-[310px] items-center justify-center rounded-full border border-line-strong bg-transparent px-11 text-[17px] leading-none font-normal tracking-[0.12em] whitespace-nowrap transition-colors duration-[220ms] ease-out hover:bg-accent hover:text-accent-ink min-[760px]:text-[20px]";
+  "inline-flex h-[58px] max-w-full items-center justify-center rounded-full border border-line-strong bg-transparent px-6 min-[400px]:min-w-[310px] min-[400px]:px-11 text-[17px] leading-none font-normal tracking-[0.12em] whitespace-nowrap transition-colors duration-[220ms] ease-out hover:bg-accent hover:text-accent-ink min-[760px]:text-[20px]";
 
 /** 左右2分割の版面（spec の split_media）。760px 未満では縦積みになり、文章が先に来る */
 const SPLIT_MEDIA =

@@ -37,9 +37,21 @@ function QuotePrintPage() {
         </p>
       ) : null}
 
-      <div className="mx-auto max-w-[210mm] shadow-lg print:shadow-none">
-        <QuoteDocument {...data} />
+      {/*
+        帳票はA4の幅（210mm≒794px）で組んであり、スマホの画面幅には収まらない。
+        ページ全体が横スクロールすると操作バーごと流れてしまうため、
+        帳票だけを横スクロールの箱に入れて、画面の外へはみ出さないようにする。
+        印刷時はこの箱を無効にして、用紙どおりに出力する。
+      */}
+      <div className="overflow-x-auto px-4 print:overflow-visible print:px-0">
+        <div className="mx-auto w-[210mm] max-w-[210mm] shadow-lg print:shadow-none">
+          <QuoteDocument {...data} />
+        </div>
       </div>
+
+      <p className="mx-auto mt-3 max-w-[210mm] px-4 text-center text-xs text-neutral-600 md:hidden print:hidden">
+        帳票はA4の幅で作られています。スマホでは横にスクロールしてご覧ください。
+      </p>
 
       <p className="mx-auto mt-4 max-w-[210mm] px-4 text-center text-xs text-neutral-600 print:hidden">
         ブラウザの印刷画面で「送信先」を「PDFに保存」にするとPDFファイルとして保存できます。

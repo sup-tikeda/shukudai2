@@ -62,4 +62,49 @@ describe("DataTable", () => {
     expect(html).not.toContain("<table");
     expect(html).toContain("顧客が登録されていません。");
   });
+
+  it("スマホ用に、1件を1枚のカードにした縦積みも同時に描画する", () => {
+    const html = renderToStaticMarkup(
+      <DataTable
+        columns={columns}
+        rows={[
+          { id: "1", name: "佐々木 花子", count: 1 },
+          { id: "2", name: "有限会社サンプル商会", count: 2 },
+        ]}
+        rowKey={(r) => r.id}
+        emptyMessage="ありません"
+      />,
+    );
+
+    // 表はmd以上でだけ出し、カードはmd未満でだけ出す
+    expect(html).toContain('<table class="hidden w-full min-w-[44rem]');
+    expect(html).toContain('<ul class="md:hidden">');
+    // カードは行数ぶん出る
+    expect(html.match(/<li /g)?.length).toBe(2);
+    // ラベルと値の組がカード側にも出ている
+    expect(html).toContain("<dt");
+    expect(html).toContain("<dd");
+  });
+
+  it("操作ボタンの列は、カードでは下部にまとめる", () => {
+    const html = renderToStaticMarkup(
+      <DataTable
+        columns={[
+          ...columns,
+          {
+            key: "actions",
+            header: "",
+            render: () => <button type="button">削除</button>,
+          },
+        ]}
+        rows={[{ id: "1", name: "テスト", count: 0 }]}
+        rowKey={(r) => r.id}
+        emptyMessage="ありません"
+      />,
+    );
+
+    // 表とカードで1回ずつ、合わせて2回出る
+    expect(html.match(/削除/g)?.length).toBe(2);
+    expect(html).toContain("mt-3 flex flex-wrap justify-end gap-2");
+  });
 });

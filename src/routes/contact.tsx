@@ -127,7 +127,7 @@ function ContactPage() {
           <button
             type="submit"
             disabled={status === "sending"}
-            className="inline-flex h-[58px] w-full min-w-[310px] items-center justify-center rounded-full bg-accent px-11 text-[17px] leading-none font-normal tracking-[0.12em] whitespace-nowrap text-accent-ink transition-colors duration-[220ms] ease-out hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 min-[760px]:w-auto min-[760px]:self-start min-[760px]:text-[20px]"
+            className="inline-flex h-[58px] w-full items-center justify-center rounded-full bg-accent px-6 min-[400px]:px-11 text-[17px] leading-none font-normal tracking-[0.12em] whitespace-nowrap text-accent-ink transition-colors duration-[220ms] ease-out hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40 min-[760px]:w-auto min-[760px]:min-w-[310px] min-[760px]:self-start min-[760px]:text-[20px]"
           >
             {status === "sending" ? "送信中..." : "送信する"}
           </button>
